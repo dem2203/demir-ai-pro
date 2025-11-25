@@ -17,6 +17,7 @@ Enterprise-grade AI trading bot with:
 
 import logging
 import sys
+import os  # Railway port için eklendi
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -60,6 +61,14 @@ from integrations import BinanceIntegration, TelegramNotifier
 # Import API routes
 from api import router
 
+# Import dashboard API (Phase 3.5)
+try:
+    from api.dashboard_api import router as dashboard_router
+    DASHBOARD_AVAILABLE = True
+except ImportError:
+    DASHBOARD_AVAILABLE = False
+    logger.warning("⚠️  Dashboard API not available")
+
 # ============================================================================
 # APPLICATION INITIALIZATION
 # ============================================================================
@@ -81,6 +90,11 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(router)
+
+# Include dashboard routes (Phase 3.5)
+if DASHBOARD_AVAILABLE:
+    app.include_router(dashboard_router)
+    logger.info("✅ Dashboard API routes included")
 
 # ============================================================================
 # STARTUP EVENTS
@@ -113,10 +127,15 @@ async def startup_event():
         logger.error(f"❌ Core initialization failed: {e}")
         sys.exit(1)
     
+    # Railway port info
+    port = int(os.getenv("PORT", API_PORT))
     logger.info(f"\n✅ {APP_NAME} v{VERSION} is ready!")
-    logger.info(f"🌐 API server: http://{API_HOST}:{API_PORT}")
-    logger.info(f"📊 Health: http://{API_HOST}:{API_PORT}/health")
-    logger.info(f"📄 Docs: http://{API_HOST}:{API_PORT}/docs\n")
+    logger.info(f"🌐 API server: http://0.0.0.0:{port}")
+    logger.info(f"📊 Health: http://0.0.0.0:{port}/health")
+    logger.info(f"📄 Docs: http://0.0.0.0:{port}/docs")
+    if DASHBOARD_AVAILABLE:
+        logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
+    logger.info("")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -142,10 +161,16 @@ async def shutdown_event():
 # ============================================================================
 
 if __name__ == "__main__":
+    # Railway port configuration
+    PORT = int(os.getenv("PORT", API_PORT))
+    HOST = "0.0.0.0"  # Railway için 0.0.0.0 gerekli
+    
+    logger.info(f"🚀 Starting server on {HOST}:{PORT}")
+    
     uvicorn.run(
         "main:app",
-        host=API_HOST,
-        port=API_PORT,
+        host=HOST,
+        port=PORT,
         workers=API_WORKERS,
         reload=False,
         log_level="info"
