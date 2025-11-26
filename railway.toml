@@ -5,7 +5,7 @@ builder = "nixpacks"
 watchPatterns = ["**/*.py", "requirements.txt"]
 
 [deploy]
-startCommand = "start = "python main.py & python core/trading_engine/main_loop_enhanced.py" 
+startCommand = "python main.py & python core/trading_engine/main_loop_enhanced.py"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 
