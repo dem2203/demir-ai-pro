@@ -1,6 +1,5 @@
 # Railway Deployment Configuration
 # DEMIR AI PRO v8.0
-
 [build]
 builder = "nixpacks"
 watchPatterns = ["**/*.py", "requirements.txt"]
