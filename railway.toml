@@ -5,13 +5,13 @@ builder = "nixpacks"
 watchPatterns = ["**/*.py", "requirements.txt"]
 
 [deploy]
-startCommand = "python core/trading_engine/main.py"
+startCommand = "python main.py"  # FIXED: Use main.py for FastAPI + Dashboard
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 
-# Health check (optional)
-# healthcheckPath = "/health"
-# healthcheckTimeout = 100
+# Health check
+healthcheckPath = "/health"
+healthcheckTimeout = 100
 
 [env]
 # Production environment
