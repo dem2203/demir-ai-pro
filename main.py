@@ -20,6 +20,7 @@ import sys
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import uvicorn
 
 # Configure logging
@@ -106,6 +107,19 @@ app.include_router(dashboard_router)
 logger.info("✅ API and Dashboard routes included")
 
 # ====================================================================
+# ROOT ENDPOINT - REDIRECT TO DASHBOARD
+# ====================================================================
+
+@app.get("/")
+async def root():
+    """
+    Root endpoint - redirects to live dashboard
+    Railway production deployment entry point
+    """
+    logger.info("👉 Root endpoint accessed - redirecting to dashboard")
+    return RedirectResponse(url="/dashboard")
+
+# ====================================================================
 # HEALTH CHECK ENDPOINT
 # ====================================================================
 
@@ -156,6 +170,7 @@ async def startup_event():
     logger.info(f"📄 Docs: http://0.0.0.0:{port}/docs")
     if DASHBOARD_AVAILABLE:
         logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
+        logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to dashboard)")
     logger.info("")
 
 @app.on_event("shutdown")
