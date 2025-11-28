@@ -19,7 +19,7 @@ import json
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
-import os
+from pathlib import Path
 
 logger = logging.getLogger("api.dashboard")
 
@@ -168,12 +168,28 @@ async def get_recent_trades(limit: int = 20):
 async def serve_dashboard():
     """
     Serve live dashboard HTML
+    Railway-compatible path resolution using pathlib
     """
     try:
-        dashboard_path = os.path.join(os.path.dirname(__file__), "..", "ui", "live_dashboard.html")
+        # Use pathlib for cross-platform and Railway-compatible path resolution
+        dashboard_path = Path(__file__).parent.parent / "ui" / "live_dashboard.html"
+        
+        # Log the resolved path for debugging
+        logger.info(f"Attempting to load dashboard from: {dashboard_path}")
+        
+        if not dashboard_path.exists():
+            logger.error(f"Dashboard file not found at: {dashboard_path}")
+            return HTMLResponse(
+                content=f"<html><body><h1>Dashboard Not Found</h1><p>Path: {dashboard_path}</p></body></html>",
+                status_code=404
+            )
+        
         with open(dashboard_path, "r", encoding="utf-8") as f:
             html_content = f.read()
+        
+        logger.info("✅ Dashboard HTML loaded successfully")
         return HTMLResponse(content=html_content)
+        
     except Exception as e:
         logger.error(f"Failed to serve dashboard: {e}")
         return HTMLResponse(
