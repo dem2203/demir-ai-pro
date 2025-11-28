@@ -103,8 +103,8 @@ COINMARKETCAP_API_KEY = os.getenv('COINMARKETCAP_API_KEY', '')
 # Alpha Vantage - Traditional market data
 ALPHA_VANTAGE_API_KEY = os.getenv('ALPHA_VANTAGE_API_KEY', '')
 
-# Glassnode - On-chain analytics
-GLASS NODE_API_KEY = os.getenv('GLASSNODE_API_KEY', '')
+# Glassnode - On-chain analytics (FIXED: removed space)
+GLASSNODE_API_KEY = os.getenv('GLASSNODE_API_KEY', '')
 
 # CryptoPanic - News aggregation
 CRYPTOPANIC_API_KEY = os.getenv('CRYPTOPANIC_API_KEY', '')
