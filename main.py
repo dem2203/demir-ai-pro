@@ -17,7 +17,7 @@ Enterprise-grade AI trading bot with:
 
 import logging
 import sys
-import os  # Railway port için eklendi
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -25,10 +25,10 @@ import uvicorn
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('demir_ai_pro.log')
+        logging.FileHandler("demir_ai_pro.log")
     ]
 )
 
@@ -49,17 +49,32 @@ from config import (
 validate_or_exit()
 
 # Import database
-from database import get_db
-from database.models import create_all_tables
+try:
+    from database import get_db
+    from database.models import create_all_tables
+except ImportError:
+    logger.warning("⚠️  Database module not available - some features may be limited")
+    get_db = None
+    create_all_tables = None
 
-# Import core modules
-from core import AIEngine, SignalProcessor, RiskManager, DataPipeline
+# Import core modules (graceful degradation)
+try:
+    from core import AIEngine, SignalProcessor, RiskManager, DataPipeline
+except ImportError:
+    logger.warning("⚠️  Core modules not available - some features may be limited")
 
 # Import integrations
-from integrations import BinanceIntegration, TelegramNotifier
+try:
+    from integrations import BinanceIntegration, TelegramNotifier
+except ImportError:
+    logger.warning("⚠️  Integration modules not available - some features may be limited")
 
 # Import API routes
-from api import router
+try:
+    from api import router
+except ImportError:
+    logger.warning("⚠️  API router not available")
+    router = None
 
 # Import dashboard API (Phase 3.5)
 try:
@@ -89,7 +104,8 @@ app.add_middleware(
 )
 
 # Include API routes
-app.include_router(router)
+if router:
+    app.include_router(router)
 
 # Include dashboard routes (Phase 3.5)
 if DASHBOARD_AVAILABLE:
@@ -97,26 +113,38 @@ if DASHBOARD_AVAILABLE:
     logger.info("✅ Dashboard API routes included")
 
 # ============================================================================
+# HEALTH CHECK ENDPOINT
+# ============================================================================
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Railway"""
+    return {
+        "status": "healthy",
+        "service": APP_NAME,
+        "version": VERSION
+    }
+
+# ============================================================================
 # STARTUP EVENTS
 # ============================================================================
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    Application startup initialization.
-    """
+    """Application startup initialization."""
     logger.info(f"\n\n{'='*60}")
     logger.info(f"{APP_NAME} v{VERSION} - STARTING")
     logger.info(f"{'='*60}\n")
     
     # Initialize database
-    try:
-        db = get_db()
-        create_all_tables(db)
-        logger.info("✅ Database initialized")
-    except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
-        sys.exit(1)
+    if get_db and create_all_tables:
+        try:
+            db = get_db()
+            create_all_tables(db)
+            logger.info("✅ Database initialized")
+        except Exception as e:
+            logger.error(f"❌ Database initialization failed: {e}")
+            # Don't exit - allow API to continue without DB for now
     
     # Initialize core modules
     try:
@@ -125,7 +153,7 @@ async def startup_event():
         logger.info("✅ Core modules initialized")
     except Exception as e:
         logger.error(f"❌ Core initialization failed: {e}")
-        sys.exit(1)
+        # Don't exit - allow API to continue
     
     # Railway port info
     port = int(os.getenv("PORT", API_PORT))
@@ -139,20 +167,19 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """
-    Application shutdown cleanup.
-    """
+    """Application shutdown cleanup."""
     logger.info(f"\n\n{'='*60}")
     logger.info(f"{APP_NAME} v{VERSION} - SHUTTING DOWN")
     logger.info(f"{'='*60}\n")
     
     # Close database connections
-    try:
-        db = get_db()
-        db.close()
-        logger.info("✅ Database connections closed")
-    except Exception as e:
-        logger.error(f"❌ Database cleanup error: {e}")
+    if get_db:
+        try:
+            db = get_db()
+            db.close()
+            logger.info("✅ Database connections closed")
+        except Exception as e:
+            logger.error(f"❌ Database cleanup error: {e}")
     
     logger.info(f"✅ {APP_NAME} v{VERSION} shutdown complete\n")
 
@@ -163,7 +190,7 @@ async def shutdown_event():
 if __name__ == "__main__":
     # Railway port configuration
     PORT = int(os.getenv("PORT", API_PORT))
-    HOST = "0.0.0.0"  # Railway için 0.0.0.0 gerekli
+    HOST = "0.0.0.0"  # Railway requires 0.0.0.0
     
     logger.info(f"🚀 Starting server on {HOST}:{PORT}")
     
