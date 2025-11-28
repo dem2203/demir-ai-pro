@@ -5,13 +5,12 @@ builder = "nixpacks"
 watchPatterns = ["**/*.py", "requirements.txt"]
 
 [deploy]
-# Run migrations first, then start main.py (FastAPI + dashboard)
-# Trading engine will be started separately or integrated into main.py
-startCommand = "python scripts/run_migrations.py && python main.py"
+# Use wrapper script for reliable sequential execution
+startCommand = "bash scripts/start.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 
-# Health check - re-enabled
+# Health check - enabled
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 
