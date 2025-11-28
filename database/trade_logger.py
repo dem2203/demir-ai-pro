@@ -15,10 +15,10 @@ Version: 8.0
 import asyncio
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import json
 
-from database.connection import DatabaseConnection
+from database.connection import get_db
 
 logger = logging.getLogger("database.trade_logger")
 
@@ -27,7 +27,7 @@ class TradeLogger:
     """Production-grade trade logging system"""
     
     def __init__(self):
-        self.db = DatabaseConnection()
+        self.db = get_db()  # Use global DB instance
         self._ensure_tables()
         logger.info("TradeLogger initialized")
     
@@ -64,7 +64,7 @@ class TradeLogger:
         CREATE INDEX IF NOT EXISTS idx_trade_history_pnl ON trade_history(pnl DESC NULLS LAST);
         """
         
-        # Performance metrics table
+        # Performance metrics table  
         create_metrics_sql = """
         CREATE TABLE IF NOT EXISTS performance_metrics (
             id SERIAL PRIMARY KEY,
@@ -158,8 +158,9 @@ class TradeLogger:
         )
         
         try:
-            result = await asyncio.to_thread(self.db.execute, sql, params, commit=True, fetch=True)
-            trade_id = result[0]['id']
+            with self.db.get_cursor() as cursor:
+                cursor.execute(sql, params)
+                trade_id = cursor.fetchone()[0]
             logger.info(f"📝 Trade opened logged: ID={trade_id} | {symbol} {side} @ ${entry_price:,.2f}")
             return trade_id
         except Exception as e:
@@ -195,7 +196,7 @@ class TradeLogger:
         params = (exit_price, pnl, pnl_percent, trade_id)
         
         try:
-            await asyncio.to_thread(self.db.execute, sql, params, commit=True)
+            self.db.execute(sql, params, commit=True)
             logger.info(f"📝 Trade closed logged: ID={trade_id} | PNL=${pnl:,.2f} ({pnl_percent:+.2f}%)")
         except Exception as e:
             logger.error(f"Failed to log trade close: {e}")
@@ -231,7 +232,7 @@ class TradeLogger:
         )
         
         try:
-            await asyncio.to_thread(self.db.execute, sql, params, commit=True)
+            self.db.execute(sql, params, commit=True)
             logger.debug(f"📊 Metric logged: {metric_type}={value:.4f}")
         except Exception as e:
             logger.error(f"Failed to log metric: {e}")
@@ -280,7 +281,7 @@ class TradeLogger:
         )
         
         try:
-            await asyncio.to_thread(self.db.execute, sql, params, commit=True)
+            self.db.execute(sql, params, commit=True)
         except Exception as e:
             logger.error(f"Failed to log position snapshot: {e}")
     
@@ -289,7 +290,7 @@ class TradeLogger:
         symbol: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 100
-    ) -> list:
+    ) -> List[Dict[str, Any]]:
         """
         Get trade history
         
@@ -316,8 +317,15 @@ class TradeLogger:
         params.append(limit)
         
         try:
-            result = await asyncio.to_thread(self.db.execute, sql, tuple(params), fetch=True)
-            return result
+            rows = self.db.fetchall(sql, tuple(params))
+            # Convert to dict list
+            if rows:
+                columns = ['id', 'timestamp', 'symbol', 'side', 'order_type', 'entry_price',
+                          'exit_price', 'quantity', 'commission', 'pnl', 'pnl_percent', 'status',
+                          'stop_loss', 'take_profit', 'signal_confidence', 'regime', 'order_id',
+                          'metadata', 'created_at', 'updated_at']
+                return [dict(zip(columns, row)) for row in rows]
+            return []
         except Exception as e:
             logger.error(f"Failed to get trade history: {e}")
             return []
@@ -342,29 +350,52 @@ class TradeLogger:
         """
         
         try:
-            result = await asyncio.to_thread(self.db.execute, sql, fetch=True)
-            if result:
-                data = result[0]
-                winning = data['winning_trades'] or 0
-                total_closed = winning + (data['losing_trades'] or 0)
+            row = self.db.fetchone(sql)
+            if row:
+                winning = row[1] or 0
+                losing = row[2] or 0
+                total_closed = winning + losing
+                total_pnl = float(row[3]) if row[3] else 0
+                avg_win = float(row[4]) if row[4] else 0
+                avg_loss = float(row[5]) if row[5] else 0
+                total_commission = float(row[6]) if row[6] else 0
                 
                 return {
-                    'total_trades': data['total_trades'],
+                    'total_trades': row[0],
                     'winning_trades': winning,
-                    'losing_trades': data['losing_trades'],
+                    'losing_trades': losing,
                     'win_rate': (winning / total_closed * 100) if total_closed > 0 else 0,
-                    'total_pnl': float(data['total_pnl']),
-                    'avg_win': float(data['avg_win']),
-                    'avg_loss': float(data['avg_loss']),
-                    'profit_factor': abs(winning * data['avg_win'] / ((data['losing_trades'] or 1) * data['avg_loss'])) if data['avg_loss'] != 0 else 0,
-                    'total_commission': float(data['total_commission'])
+                    'total_pnl': total_pnl,
+                    'avg_win': avg_win,
+                    'avg_loss': avg_loss,
+                    'profit_factor': abs(winning * avg_win / (losing * avg_loss)) if (losing > 0 and avg_loss != 0) else 0,
+                    'total_commission': total_commission
                 }
-            return {}
+            return {
+                'total_trades': 0,
+                'winning_trades': 0,
+                'losing_trades': 0,
+                'win_rate': 0,
+                'total_pnl': 0,
+                'avg_win': 0,
+                'avg_loss': 0,
+                'profit_factor': 0,
+                'total_commission': 0
+            }
         except Exception as e:
             logger.error(f"Failed to get performance summary: {e}")
-            return {}
+            return {
+                'total_trades': 0,
+                'winning_trades': 0,
+                'losing_trades': 0,
+                'win_rate': 0,
+                'total_pnl': 0,
+                'avg_win': 0,
+                'avg_loss': 0,
+                'profit_factor': 0,
+                'total_commission': 0
+            }
     
     async def close(self):
-        """Cleanup database connection"""
-        self.db.close()
-        logger.info("TradeLogger closed")
+        """Cleanup - DB connection is global, don't close"""
+        logger.info("TradeLogger closed (connection pool remains active)")
