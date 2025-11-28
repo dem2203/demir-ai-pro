@@ -6,6 +6,8 @@
 
 [![Status](https://img.shields.io/badge/status-production++-brightgreen)]() [![Phase](https://img.shields.io/badge/phase-3.5%20complete-blue)]() [![Quality](https://img.shields.io/badge/quality-9.9%2F10-gold)]()
 
+> **Latest Deployment:** Nov 28, 2025 - 23:20 CET - Dashboard path fixes + startup wrapper
+
 ---
 ## 🎯 Overview
 
@@ -60,7 +62,14 @@ DEMIR AI PRO is a professional cryptocurrency trading bot powered by multi-layer
 | Phase 3: Execution | ✅ Complete | 100% |
 | **Phase 3.5: Enhancements** | **✅ Complete** | **100%** |
 
-### Latest Updates (Nov 25, 2025 - 17:35 CET)
+### Latest Updates (Nov 28, 2025 - 23:20 CET)
+
+**Railway Deployment Fixes:**
+- ✅ Dashboard path resolution (pathlib)
+- ✅ Root endpoint redirect to dashboard
+- ✅ Bash wrapper script for startup
+- ✅ Health check enabled
+- ✅ Sequential migration → server startup
 
 **Phase 3.5 Features:**
 - ✅ Database Trade Logger (PostgreSQL persistence)
@@ -267,7 +276,7 @@ MIN_CONFIDENCE=0.65
 
 Railway auto-deploys on push to `main` branch.
 
-**Start Command:** `python core/trading_engine/main_loop_enhanced.py`
+**Start Command:** `bash scripts/start.sh`
 
 **Monitor:**
 - Railway Logs: System health
