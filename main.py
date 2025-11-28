@@ -69,24 +69,19 @@ try:
 except ImportError:
     logger.warning("⚠️  Integration modules not available - some features may be limited")
 
-# Import API routes
-try:
-    from api import router
-except ImportError:
-    logger.warning("⚠️  API router not available")
-    router = None
+# -------------------------------------------------------------------
+# API ROUTES (BURASI ÖNEMLİ KISIM)
+# -------------------------------------------------------------------
 
-# Import dashboard API (Phase 3.5)
-try:
-    from api.dashboard_api import router as dashboard_router
-    DASHBOARD_AVAILABLE = True
-except ImportError:
-    DASHBOARD_AVAILABLE = False
-    logger.warning("⚠️  Dashboard API not available")
+# API router ve dashboard router'ı zorunlu import edelim.
+# Hata varsa deploy patlasın, log'da gerçek sorunu görelim.
+from api import router as api_router
+from api.dashboard_api import router as dashboard_router
+DASHBOARD_AVAILABLE = True
 
-# ============================================================================
+# ====================================================================
 # APPLICATION INITIALIZATION
-# ============================================================================
+# ====================================================================
 
 app = FastAPI(
     title=f"{APP_NAME} API",
@@ -104,17 +99,15 @@ app.add_middleware(
 )
 
 # Include API routes
-if router:
-    app.include_router(router)
+app.include_router(api_router)
 
 # Include dashboard routes (Phase 3.5)
-if DASHBOARD_AVAILABLE:
-    app.include_router(dashboard_router)
-    logger.info("✅ Dashboard API routes included")
+app.include_router(dashboard_router)
+logger.info("✅ API and Dashboard routes included")
 
-# ============================================================================
+# ====================================================================
 # HEALTH CHECK ENDPOINT
-# ============================================================================
+# ====================================================================
 
 @app.get("/health")
 async def health_check():
@@ -125,9 +118,9 @@ async def health_check():
         "version": VERSION
     }
 
-# ============================================================================
+# ====================================================================
 # STARTUP EVENTS
-# ============================================================================
+# ====================================================================
 
 @app.on_event("startup")
 async def startup_event():
@@ -183,9 +176,9 @@ async def shutdown_event():
     
     logger.info(f"✅ {APP_NAME} v{VERSION} shutdown complete\n")
 
-# ============================================================================
+# ====================================================================
 # MAIN ENTRY POINT
-# ============================================================================
+# ====================================================================
 
 if __name__ == "__main__":
     # Railway port configuration
