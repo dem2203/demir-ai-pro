@@ -5,8 +5,8 @@ builder = "nixpacks"
 watchPatterns = ["**/*.py", "requirements.txt"]
 
 [deploy]
-# Use wrapper script for reliable sequential execution
-startCommand = "bash scripts/start.sh"
+# Use Python wrapper for cross-platform compatibility
+startCommand = "python scripts/railway_start.py"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 
