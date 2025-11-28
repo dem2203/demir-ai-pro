@@ -43,9 +43,10 @@ if ENVIRONMENT not in ['production', 'development']:
 # DATABASE CONFIGURATION (REQUIRED)
 # ========================================================================
 
-DATABASE_URL = os.getenv('DATABASE_URL')
+# Use DATABASE_PUBLIC_URL (Railway provides this by default)
+DATABASE_URL = os.getenv('DATABASE_PUBLIC_URL')
 if not DATABASE_URL:
-    print("❌ CRITICAL ERROR: DATABASE_URL environment variable not set!")
+    print("❌ CRITICAL ERROR: DATABASE_PUBLIC_URL environment variable not set!")
     sys.exit(1)
 
 # PostgreSQL connection pool settings
@@ -230,17 +231,19 @@ if not ADVISORY_MODE and not DRY_RUN:
 # STARTUP BANNER
 # ========================================================================
 
-print(f"""\n
+print(f"""
+
 ┌─────────────────────────────────────────────────────────────┐
 │  ⚡ {FULL_NAME} - PRODUCTION CONFIG LOADED                      │
 └─────────────────────────────────────────────────────────────┘
 
 ✅ Environment: {ENVIRONMENT.upper()}
-✅ Database: Connected
+✅ Database: Connected (PUBLIC endpoint)
 ✅ Binance API: Authenticated
 ✅ Advisory Mode: {ADVISORY_MODE}
 ✅ Tracked Symbols: {len(TRACKED_SYMBOLS)}
 
 ⚠️  Zero Mock Data Policy Active
 ⚠️  Production Validation Enabled
-\n""")
+
+""")
