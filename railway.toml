@@ -5,13 +5,15 @@ builder = "nixpacks"
 watchPatterns = ["**/*.py", "requirements.txt"]
 
 [deploy]
-startCommand = "python scripts/run_migrations.py && python main.py & python core/trading_engine/main_loop_enhanced.py"
+# Run migrations first, then start main.py (FastAPI + dashboard)
+# Trading engine will be started separately or integrated into main.py
+startCommand = "python scripts/run_migrations.py && python main.py"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 
-# Health check (DISABLED temporarily - will re-enable after first successful deploy)
-# healthcheckPath = "/health"
-# healthcheckTimeout = 100
+# Health check - re-enabled
+healthcheckPath = "/health"
+healthcheckTimeout = 100
 
 [env]
 # Production environment
