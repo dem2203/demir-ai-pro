@@ -64,6 +64,9 @@ cryptography==41.0.7
 redis==5.0.1
 limits==3.7.0
 
+# ═══ SYSTEM MONITORING ═══
+psutil==5.9.6
+
 # ═══ UTILITIES ═══
 python-dotenv==1.0.0
 python-multipart==0.0.6
@@ -78,4 +81,3 @@ textblob==0.17.1
 # ═══ TESTING ═══
 pytest==7.4.3
 pytest-asyncio==0.21.1
-psycopg2-binary
