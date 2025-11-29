@@ -19,6 +19,7 @@ Enterprise-grade AI trading bot with:
 import logging
 import sys
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -80,13 +81,92 @@ except ImportError as e:
     logger.warning(f"⚠️  Trading engine not available: {e}")
     TRADING_ENGINE_AVAILABLE = False
 
-# -------------------------------------------------------------------
-# API ROUTES
-# -------------------------------------------------------------------
-
+# Import API routes
 from api import router as api_router
 from api.dashboard_api import router as dashboard_router
-DASHBOARD_AVAILABLE = True
+
+# ====================================================================
+# LIFESPAN EVENTS
+# ====================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events
+    """
+    # ============ STARTUP ============
+    logger.info(f"\n\n{'='*60}")
+    logger.info(f"{APP_NAME} v{VERSION} - STARTING")
+    logger.info(f"{'='*60}\n")
+    
+    # Initialize database
+    if get_db and create_all_tables:
+        try:
+            db = get_db()
+            create_all_tables(db)
+            logger.info("✅ Database initialized")
+        except Exception as e:
+            logger.error(f"❌ Database initialization failed: {e}")
+    
+    # Initialize core modules
+    try:
+        logger.info("⚙️  Initializing core modules...")
+        logger.info("✅ Core modules initialized")
+    except Exception as e:
+        logger.error(f"❌ Core initialization failed: {e}")
+    
+    # Start trading engine
+    if TRADING_ENGINE_AVAILABLE:
+        try:
+            logger.info("🤖 Starting AI Trading Engine...")
+            engine = get_engine()
+            await engine.start()
+            logger.info("✅ AI Trading Engine started in background")
+        except Exception as e:
+            logger.error(f"❌ Trading engine startup failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
+    # Railway port info
+    port = int(os.getenv("PORT", API_PORT))
+    logger.info(f"\n✅ {APP_NAME} v{VERSION} is ready!")
+    logger.info(f"🌐 API server: http://0.0.0.0:{port}")
+    logger.info(f"📊 Health: http://0.0.0.0:{port}/health")
+    logger.info(f"📄 Docs: http://0.0.0.0:{port}/docs")
+    logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
+    logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to dashboard)")
+    if TRADING_ENGINE_AVAILABLE:
+        logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
+    logger.info("")
+    
+    # Application is running
+    yield
+    
+    # ============ SHUTDOWN ============
+    logger.info(f"\n\n{'='*60}")
+    logger.info(f"{APP_NAME} v{VERSION} - SHUTTING DOWN")
+    logger.info(f"{'='*60}\n")
+    
+    # Stop trading engine
+    if TRADING_ENGINE_AVAILABLE:
+        try:
+            logger.info("🛑 Stopping AI Trading Engine...")
+            engine = get_engine()
+            await engine.stop()
+            logger.info("✅ Trading engine stopped")
+        except Exception as e:
+            logger.error(f"❌ Trading engine shutdown error: {e}")
+    
+    # Close database connections
+    if get_db:
+        try:
+            db = get_db()
+            db.close()
+            logger.info("✅ Database connections closed")
+        except Exception as e:
+            logger.error(f"❌ Database cleanup error: {e}")
+    
+    logger.info(f"✅ {APP_NAME} v{VERSION} shutdown complete\n")
 
 # ====================================================================
 # APPLICATION INITIALIZATION
@@ -95,7 +175,8 @@ DASHBOARD_AVAILABLE = True
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API"
+    description="Enterprise-grade AI crypto trading bot API",
+    lifespan=lifespan  # Use lifespan instead of on_event
 )
 
 # CORS middleware
@@ -109,8 +190,6 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(api_router)
-
-# Include dashboard routes
 app.include_router(dashboard_router)
 logger.info("✅ API and Dashboard routes included")
 
@@ -201,86 +280,6 @@ if TRADING_ENGINE_AVAILABLE:
                 "success": False,
                 "error": str(e)
             }
-
-# ====================================================================
-# STARTUP EVENTS
-# ====================================================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Application startup initialization."""
-    logger.info(f"\n\n{'='*60}")
-    logger.info(f"{APP_NAME} v{VERSION} - STARTING")
-    logger.info(f"{'='*60}\n")
-    
-    # Initialize database
-    if get_db and create_all_tables:
-        try:
-            db = get_db()
-            create_all_tables(db)
-            logger.info("✅ Database initialized")
-        except Exception as e:
-            logger.error(f"❌ Database initialization failed: {e}")
-    
-    # Initialize core modules
-    try:
-        logger.info("⚙️  Initializing core modules...")
-        logger.info("✅ Core modules initialized")
-    except Exception as e:
-        logger.error(f"❌ Core initialization failed: {e}")
-    
-    # Start trading engine
-    if TRADING_ENGINE_AVAILABLE:
-        try:
-            logger.info("🤖 Starting AI Trading Engine...")
-            engine = get_engine()
-            await engine.start()
-            logger.info("✅ AI Trading Engine started in background")
-        except Exception as e:
-            logger.error(f"❌ Trading engine startup failed: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-    
-    # Railway port info
-    port = int(os.getenv("PORT", API_PORT))
-    logger.info(f"\n✅ {APP_NAME} v{VERSION} is ready!")
-    logger.info(f"🌐 API server: http://0.0.0.0:{port}")
-    logger.info(f"📊 Health: http://0.0.0.0:{port}/health")
-    logger.info(f"📄 Docs: http://0.0.0.0:{port}/docs")
-    if DASHBOARD_AVAILABLE:
-        logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
-        logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to dashboard)")
-    if TRADING_ENGINE_AVAILABLE:
-        logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
-    logger.info("")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown cleanup."""
-    logger.info(f"\n\n{'='*60}")
-    logger.info(f"{APP_NAME} v{VERSION} - SHUTTING DOWN")
-    logger.info(f"{'='*60}\n")
-    
-    # Stop trading engine
-    if TRADING_ENGINE_AVAILABLE:
-        try:
-            logger.info("🛑 Stopping AI Trading Engine...")
-            engine = get_engine()
-            await engine.stop()
-            logger.info("✅ Trading engine stopped")
-        except Exception as e:
-            logger.error(f"❌ Trading engine shutdown error: {e}")
-    
-    # Close database connections
-    if get_db:
-        try:
-            db = get_db()
-            db.close()
-            logger.info("✅ Database connections closed")
-        except Exception as e:
-            logger.error(f"❌ Database cleanup error: {e}")
-    
-    logger.info(f"✅ {APP_NAME} v{VERSION} shutdown complete\n")
 
 # ====================================================================
 # MAIN ENTRY POINT
