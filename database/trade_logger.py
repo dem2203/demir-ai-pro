@@ -10,6 +10,9 @@ Production-grade trade history logging to PostgreSQL.
 
 Author: DEMIR AI PRO
 Version: 8.0
+
+IMPORTANT: PostgreSQL reserves 'timestamp' as keyword.
+Using specific column names: trade_timestamp, metric_timestamp, snapshot_timestamp
 """
 
 import asyncio
@@ -33,11 +36,11 @@ class TradeLogger:
     
     def _ensure_tables(self):
         """Ensure all required tables exist"""
-        # Trade history table
+        # Trade history table (timestamp → trade_timestamp)
         create_trades_sql = """
         CREATE TABLE IF NOT EXISTS trade_history (
             id SERIAL PRIMARY KEY,
-            timestamp TIMESTAMP NOT NULL,
+            trade_timestamp TIMESTAMP NOT NULL,
             symbol VARCHAR(20) NOT NULL,
             side VARCHAR(10) NOT NULL,
             order_type VARCHAR(20) NOT NULL,
@@ -59,16 +62,16 @@ class TradeLogger:
         );
         
         CREATE INDEX IF NOT EXISTS idx_trade_history_symbol ON trade_history(symbol);
-        CREATE INDEX IF NOT EXISTS idx_trade_history_timestamp ON trade_history(timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_trade_history_timestamp ON trade_history(trade_timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_trade_history_status ON trade_history(status);
         CREATE INDEX IF NOT EXISTS idx_trade_history_pnl ON trade_history(pnl DESC NULLS LAST);
         """
         
-        # Performance metrics table  
+        # Performance metrics table (timestamp → metric_timestamp)
         create_metrics_sql = """
         CREATE TABLE IF NOT EXISTS performance_metrics (
             id SERIAL PRIMARY KEY,
-            timestamp TIMESTAMP NOT NULL,
+            metric_timestamp TIMESTAMP NOT NULL,
             metric_type VARCHAR(50) NOT NULL,
             symbol VARCHAR(20),
             value DECIMAL(20, 8) NOT NULL,
@@ -77,14 +80,14 @@ class TradeLogger:
         );
         
         CREATE INDEX IF NOT EXISTS idx_perf_metrics_type ON performance_metrics(metric_type);
-        CREATE INDEX IF NOT EXISTS idx_perf_metrics_timestamp ON performance_metrics(timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_perf_metrics_timestamp ON performance_metrics(metric_timestamp DESC);
         """
         
-        # Position snapshots table
+        # Position snapshots table (timestamp → snapshot_timestamp)
         create_positions_sql = """
         CREATE TABLE IF NOT EXISTS position_snapshots (
             id SERIAL PRIMARY KEY,
-            timestamp TIMESTAMP NOT NULL,
+            snapshot_timestamp TIMESTAMP NOT NULL,
             symbol VARCHAR(20) NOT NULL,
             side VARCHAR(10) NOT NULL,
             entry_price DECIMAL(20, 8) NOT NULL,
@@ -96,7 +99,7 @@ class TradeLogger:
             created_at TIMESTAMP DEFAULT NOW()
         );
         
-        CREATE INDEX IF NOT EXISTS idx_position_snapshots_timestamp ON position_snapshots(timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_position_snapshots_timestamp ON position_snapshots(snapshot_timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_position_snapshots_symbol ON position_snapshots(symbol);
         """
         
@@ -132,7 +135,7 @@ class TradeLogger:
         """
         sql = """
         INSERT INTO trade_history (
-            timestamp, symbol, side, order_type, entry_price, quantity,
+            trade_timestamp, symbol, side, order_type, entry_price, quantity,
             commission, status, stop_loss, take_profit, signal_confidence,
             regime, order_id, metadata
         ) VALUES (
@@ -219,7 +222,7 @@ class TradeLogger:
             metadata: Optional metadata
         """
         sql = """
-        INSERT INTO performance_metrics (timestamp, metric_type, symbol, value, metadata)
+        INSERT INTO performance_metrics (metric_timestamp, metric_type, symbol, value, metadata)
         VALUES (%s, %s, %s, %s, %s);
         """
         
@@ -263,7 +266,7 @@ class TradeLogger:
         """
         sql = """
         INSERT INTO position_snapshots (
-            timestamp, symbol, side, entry_price, current_price,
+            snapshot_timestamp, symbol, side, entry_price, current_price,
             quantity, unrealized_pnl, stop_loss, take_profit
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
@@ -313,14 +316,14 @@ class TradeLogger:
             sql += " AND status = %s"
             params.append(status)
         
-        sql += " ORDER BY timestamp DESC LIMIT %s;"
+        sql += " ORDER BY trade_timestamp DESC LIMIT %s;"
         params.append(limit)
         
         try:
             rows = self.db.fetchall(sql, tuple(params))
             # Convert to dict list
             if rows:
-                columns = ['id', 'timestamp', 'symbol', 'side', 'order_type', 'entry_price',
+                columns = ['id', 'trade_timestamp', 'symbol', 'side', 'order_type', 'entry_price',
                           'exit_price', 'quantity', 'commission', 'pnl', 'pnl_percent', 'status',
                           'stop_loss', 'take_profit', 'signal_confidence', 'regime', 'order_id',
                           'metadata', 'created_at', 'updated_at']
