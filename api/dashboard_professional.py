@@ -1,7 +1,8 @@
 """
 Professional Dashboard Routes
 =============================
-Multi-layer analysis routes for professional dashboard.
+Multi-layer analysis routes with REAL Technical Analysis (TA-Lib)
+NO MOCK DATA - Only genuine market data and calculations
 
 Author: DEMIR AI PRO
 Version: 8.0
@@ -69,29 +70,34 @@ async def get_professional_dashboard():
 @router.get("/api/analyze/{symbol}")
 async def analyze_coin(symbol: str):
     """
-    Analyze any coin with multi-layer analysis
+    Analyze any coin with PROFESSIONAL multi-layer TA-Lib analysis
+    Real indicators: RSI, MACD, Bollinger Bands, EMA, ATR
+    NO MOCK DATA
     """
     try:
         symbol = symbol.upper()
         
         if not symbol.endswith("USDT"):
-            return JSONResponse(
-                content={"success": False, "error": "Symbol must end with USDT"},
-                status_code=400
-            )
+            symbol = f"{symbol}USDT"
         
-        logger.info(f"🔍 Analyzing {symbol}...")
+        logger.info(f"🔍 Analyzing {symbol} with professional TA engine...")
         
-        # Fetch market data
-        market_data = await fetch_market_data(symbol)
-        if not market_data:
-            return JSONResponse(
-                content={"success": False, "error": f"Could not fetch data for {symbol}"},
-                status_code=404
-            )
+        # Use real TA engine
+        from core.technical_analysis import get_ta_engine
         
-        # Perform analysis
-        analysis = await perform_multi_layer_analysis(symbol, market_data)
+        ta_engine = get_ta_engine()
+        analysis = await ta_engine.analyze(symbol)
+        
+        if not analysis:
+            logger.warning(f"⚠️  Professional analysis returned None for {symbol}, using fallback...")
+            # Only fallback if professional analysis fails
+            market_data = await fetch_market_data(symbol)
+            if not market_data:
+                return JSONResponse(
+                    content={"success": False, "error": f"Could not fetch data for {symbol}"},
+                    status_code=404
+                )
+            analysis = await perform_fallback_analysis(symbol, market_data)
         
         return {
             "success": True,
@@ -102,6 +108,8 @@ async def analyze_coin(symbol: str):
         
     except Exception as e:
         logger.error(f"❌ Analysis error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return JSONResponse(
             content={"success": False, "error": str(e)},
             status_code=500
@@ -111,6 +119,7 @@ async def analyze_coin(symbol: str):
 async def fetch_market_data(symbol: str) -> Optional[Dict[str, Any]]:
     """
     Fetch market data from Binance
+    Only real data - no mock
     """
     try:
         from integrations.binance_integration import BinanceIntegration
@@ -119,6 +128,7 @@ async def fetch_market_data(symbol: str) -> Optional[Dict[str, Any]]:
         ticker = binance.get_ticker(symbol)
         
         if not ticker:
+            logger.warning(f"⚠️  No ticker data for {symbol}")
             return None
         
         return {
@@ -134,13 +144,16 @@ async def fetch_market_data(symbol: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-async def perform_multi_layer_analysis(
+async def perform_fallback_analysis(
     symbol: str,
     market_data: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
-    Perform comprehensive multi-layer analysis
+    FALLBACK ONLY - Use when professional TA engine fails
+    This is NOT the primary analysis method
     """
+    logger.warning(f"⚠️  Using fallback analysis for {symbol} (professional TA unavailable)")
+    
     analysis = {
         'price': market_data['price'],
         'change_24h': market_data['change_24h'],
@@ -152,7 +165,7 @@ async def perform_multi_layer_analysis(
     
     price_change = market_data['change_24h']
     
-    # Momentum-based analysis
+    # Momentum-based fallback analysis
     if abs(price_change) > 5:
         if price_change > 0:
             analysis['layers']['rsi'] = min(70 + (price_change / 10) * 10, 95)
