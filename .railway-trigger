@@ -1,0 +1,5 @@
+# Railway Rebuild Trigger
+# Updated: 2025-11-29 08:32 CET
+# Reason: Force rebuild to clear Python bytecode cache
+
+This file triggers Railway rebuild when modified.
