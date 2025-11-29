@@ -34,7 +34,6 @@ results = suite.calculate_all(df)
 print(f"POC: {results['volume_profile']['poc']}")
 print(f"Regime: {results['choppiness_regime']}")
 ```
-
 ---
 
 ## MODULE 2: MARKET MICROSTRUCTURE
