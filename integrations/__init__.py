@@ -18,13 +18,17 @@ except ImportError as e:
     BinanceIntegration = None
     BINANCE_AVAILABLE = False
 
-# Telegram Integration (optional)
+# Telegram Integration (optional) - multiple import paths for compatibility
 try:
-    from .telegram import TelegramNotifier
+    from .telegram_notifier import TelegramNotifier
     TELEGRAM_AVAILABLE = True
 except ImportError:
-    TelegramNotifier = None
-    TELEGRAM_AVAILABLE = False
+    try:
+        from .telegram import TelegramNotifier
+        TELEGRAM_AVAILABLE = True
+    except ImportError:
+        TelegramNotifier = None
+        TELEGRAM_AVAILABLE = False
 
 __all__ = [
     'BinanceIntegration',
