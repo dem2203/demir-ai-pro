@@ -590,7 +590,23 @@
     </div>
 
     <script>
-        // WebSocket connection
+        // =====================================================
+        // MAIN APPLICATION CONTROLLER
+        // =====================================================
+
+        const FIXED_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'LTCUSDT'];
+        
+        // Mapping symbol to element IDs
+        const symbolMap = {
+            'BTCUSDT': { price: 'btcPrice', change: 'btcChange', rsi: 'btcRsi', macd: 'btcMacd', bb: 'btcBB', ema: 'btcEma', lstm: 'btcLstm', xgb: 'btcXgb', score: 'btcScore', scoreFill: 'btcScoreFill' },
+            'ETHUSDT': { price: 'ethPrice', change: 'ethChange', rsi: 'ethRsi', macd: 'ethMacd', bb: 'ethBB', ema: 'ethEma', lstm: 'ethLstm', xgb: 'ethXgb', score: 'ethScore', scoreFill: 'ethScoreFill' },
+            'LTCUSDT': { price: 'ltcPrice', change: 'ltcChange', rsi: 'ltcRsi', macd: 'ltcMacd', bb: 'ltcBB', ema: 'ltcEma', lstm: 'ltcLstm', xgb: 'ltcXgb', score: 'ltcScore', scoreFill: 'ltcScoreFill' }
+        };
+
+        // =====================================================
+        // WEBSOCKET MANAGEMENT
+        // =====================================================
+        
         let ws = null;
         let reconnectAttempts = 0;
         const maxReconnectAttempts = 5;
@@ -608,8 +624,12 @@
             };
             
             ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleWebSocketMessage(data);
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                } catch (err) {
+                    console.error('WebSocket parse error:', err);
+                }
             };
             
             ws.onerror = (error) => {
@@ -628,6 +648,8 @@
         }
 
         function handleWebSocketMessage(data) {
+            if (!data || !data.type) return;
+
             switch(data.type) {
                 case 'market_update':
                     updateMarketData(data);
@@ -641,97 +663,216 @@
             }
         }
 
-        function updateMarketData(data) {
-            const symbol = data.symbol;
-            const prefix = symbol.toLowerCase().replace('usdt', '');
-            
-            // Update price
-            document.getElementById(`${prefix}Price`).textContent = 
-                `$${parseFloat(data.price).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            
-            // Update change
-            const changeEl = document.getElementById(`${prefix}Change`);
-            const changePercent = parseFloat(data.change_24h);
-            changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
-            changeEl.className = `price-change ${changePercent >= 0 ? 'positive' : 'negative'}`;
-        }
+        // =====================================================
+        // UPDATE FUNCTIONS
+        // =====================================================
 
-        function updatePerformanceStats(data) {
-            // Total P&L
-            const pnl = parseFloat(data.total_pnl || 0);
-            document.getElementById('totalPnL').textContent = 
-                `$${pnl.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            
-            const pnlPct = parseFloat(data.pnl_percent || 0);
-            const pnlChangeEl = document.getElementById('pnlChange');
-            pnlChangeEl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`;
-            pnlChangeEl.style.color = pnlPct >= 0 ? '#00ff88' : '#ff4444';
-            
-            // Win Rate
-            document.getElementById('winRate').textContent = 
-                `${parseFloat(data.win_rate || 0).toFixed(1)}%`;
-            document.getElementById('winRatio').textContent = 
-                `${data.winning_trades || 0}/${data.total_trades || 0} trades`;
-            
-            // Profit Factor
-            document.getElementById('profitFactor').textContent = 
-                parseFloat(data.profit_factor || 0).toFixed(2);
-            
-            // Active Trades
-            document.getElementById('activeTrades').textContent = data.active_trades || 0;
-            document.getElementById('openPositions').textContent = 
-                `Açık Pozisyon: ${data.open_positions || 0}`;
+        function updateMarketData(data) {
+            if (!data.symbol) return;
+
+            const ids = symbolMap[data.symbol];
+            if (!ids) return;
+
+            // Update price
+            if (typeof data.price === 'number') {
+                const priceEl = document.getElementById(ids.price);
+                if (priceEl) {
+                    priceEl.textContent = `$${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+            }
+
+            // Update change
+            if (typeof data.change_24h === 'number') {
+                const changeEl = document.getElementById(ids.change);
+                if (changeEl) {
+                    const change = data.change_24h;
+                    changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                    changeEl.className = `price-change ${change >= 0 ? 'positive' : 'negative'}`;
+                }
+            }
         }
 
         function updateLayerAnalysis(data) {
-            const symbol = data.symbol;
-            const prefix = symbol.toLowerCase().replace('usdt', '');
+            if (!data.symbol || !data.layers) return;
+
+            const ids = symbolMap[data.symbol];
+            if (!ids) return;
+
             const layers = data.layers;
-            
-            // Technical indicators
-            if (layers.rsi) {
-                const rsiEl = document.getElementById(`${prefix}Rsi`);
-                rsiEl.textContent = layers.rsi.toFixed(1);
-                rsiEl.style.color = layers.rsi > 70 ? '#ff4444' : layers.rsi < 30 ? '#00ff88' : '#ffc107';
+
+            // Update RSI
+            if (typeof layers.rsi === 'number') {
+                const rsiEl = document.getElementById(ids.rsi);
+                if (rsiEl) {
+                    rsiEl.textContent = layers.rsi.toFixed(1);
+                    rsiEl.style.color = layers.rsi > 70 ? '#ff4444' : layers.rsi < 30 ? '#00ff88' : '#ffc107';
+                }
             }
-            
-            if (layers.macd) {
-                const macdEl = document.getElementById(`${prefix}Macd`);
-                macdEl.textContent = layers.macd.signal;
-                macdEl.className = `layer-signal signal-${layers.macd.signal.toLowerCase()}`;
+
+            // Update MACD
+            if (layers.macd && layers.macd.signal) {
+                const macdEl = document.getElementById(ids.macd);
+                if (macdEl) {
+                    macdEl.textContent = layers.macd.signal;
+                    macdEl.className = `layer-signal signal-${layers.macd.signal.toLowerCase()}`;
+                }
             }
-            
+
+            // Update BB
             if (layers.bb_position) {
-                document.getElementById(`${prefix}BB`).textContent = layers.bb_position;
+                const bbEl = document.getElementById(ids.bb);
+                if (bbEl) {
+                    bbEl.textContent = layers.bb_position;
+                }
             }
-            
+
+            // Update EMA
             if (layers.ema_signal) {
-                const emaEl = document.getElementById(`${prefix}Ema`);
-                emaEl.textContent = layers.ema_signal;
-                emaEl.className = `layer-signal signal-${layers.ema_signal.toLowerCase()}`;
+                const emaEl = document.getElementById(ids.ema);
+                if (emaEl) {
+                    emaEl.textContent = layers.ema_signal;
+                    emaEl.className = `layer-signal signal-${layers.ema_signal.toLowerCase()}`;
+                }
             }
-            
-            // ML Models
-            if (layers.lstm_forecast) {
-                const lstmEl = document.getElementById(`${prefix}Lstm`);
-                const forecast = parseFloat(layers.lstm_forecast);
-                lstmEl.textContent = `${forecast >= 0 ? '+' : ''}${forecast.toFixed(2)}%`;
-                lstmEl.style.color = forecast >= 0 ? '#00ff88' : '#ff4444';
+
+            // Update LSTM
+            if (typeof layers.lstm_forecast === 'number') {
+                const lstmEl = document.getElementById(ids.lstm);
+                if (lstmEl) {
+                    const forecast = layers.lstm_forecast;
+                    lstmEl.textContent = `${forecast >= 0 ? '+' : ''}${forecast.toFixed(2)}%`;
+                    lstmEl.style.color = forecast >= 0 ? '#00ff88' : '#ff4444';
+                }
             }
-            
+
+            // Update XGBoost
             if (layers.xgboost_signal) {
-                const xgbEl = document.getElementById(`${prefix}Xgb`);
-                xgbEl.textContent = layers.xgboost_signal;
-                xgbEl.className = `layer-signal signal-${layers.xgboost_signal.toLowerCase()}`;
+                const xgbEl = document.getElementById(ids.xgb);
+                if (xgbEl) {
+                    xgbEl.textContent = layers.xgboost_signal;
+                    xgbEl.className = `layer-signal signal-${layers.xgboost_signal.toLowerCase()}`;
+                }
             }
-            
-            // Composite Score
-            if (layers.composite_score !== undefined) {
-                const score = parseInt(layers.composite_score);
-                document.getElementById(`${prefix}Score`).textContent = `${score}/100`;
-                document.getElementById(`${prefix}ScoreFill`).style.width = `${score}%`;
+
+            // Update Score
+            if (typeof data.composite_score === 'number') {
+                const scoreEl = document.getElementById(ids.score);
+                const scoreFillEl = document.getElementById(ids.scoreFill);
+                if (scoreEl && scoreFillEl) {
+                    const score = Math.min(Math.max(data.composite_score, 0), 100);
+                    scoreEl.textContent = `${score.toFixed(1)}/100`;
+                    scoreFillEl.style.width = `${score}%`;
+                }
             }
         }
+
+        function updatePerformanceStats(data) {
+            if (!data) return;
+
+            // Total P&L
+            const pnl = parseFloat(data.total_pnl || 0);
+            const pnlEl = document.getElementById('totalPnL');
+            if (pnlEl) {
+                pnlEl.textContent = `$${pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            const pnlPct = parseFloat(data.pnl_percent || 0);
+            const pnlChangeEl = document.getElementById('pnlChange');
+            if (pnlChangeEl) {
+                pnlChangeEl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`;
+                pnlChangeEl.style.color = pnlPct >= 0 ? '#00ff88' : '#ff4444';
+            }
+
+            // Win Rate
+            const winRateEl = document.getElementById('winRate');
+            if (winRateEl) {
+                winRateEl.textContent = `${parseFloat(data.win_rate || 0).toFixed(1)}%`;
+            }
+
+            const winRatioEl = document.getElementById('winRatio');
+            if (winRatioEl) {
+                winRatioEl.textContent = `${data.winning_trades || 0}/${data.total_trades || 0} trades`;
+            }
+
+            // Profit Factor
+            const profitFactorEl = document.getElementById('profitFactor');
+            if (profitFactorEl) {
+                profitFactorEl.textContent = parseFloat(data.profit_factor || 0).toFixed(2);
+            }
+
+            // Active Trades
+            const activeTradesEl = document.getElementById('activeTrades');
+            if (activeTradesEl) {
+                activeTradesEl.textContent = data.active_trades || 0;
+            }
+
+            const openPositionsEl = document.getElementById('openPositions');
+            if (openPositionsEl) {
+                openPositionsEl.textContent = `Açık Pozisyon: ${data.open_positions || 0}`;
+            }
+        }
+
+        // =====================================================
+        // INITIAL DATA LOADING
+        // =====================================================
+
+        async function fetchInitialData() {
+            try {
+                console.log('📊 Fetching initial data for BTC, ETH, LTC...');
+                
+                // Fetch all 3 coins in parallel
+                const promises = FIXED_SYMBOLS.map(symbol =>
+                    fetch(`/api/analyze/${symbol}`)
+                        .then(res => res.json())
+                        .catch(err => {
+                            console.error(`Error fetching ${symbol}:`, err);
+                            return { success: false };
+                        })
+                );
+
+                const results = await Promise.all(promises);
+
+                // Process results
+                results.forEach(data => {
+                    if (data && data.success && data.symbol && data.analysis) {
+                        const symbol = data.symbol;
+                        const analysis = data.analysis;
+
+                        // Update market data
+                        updateMarketData({
+                            symbol: symbol,
+                            price: analysis.price,
+                            change_24h: analysis.change_24h
+                        });
+
+                        // Update layer analysis
+                        updateLayerAnalysis({
+                            symbol: symbol,
+                            layers: analysis.layers,
+                            composite_score: analysis.composite_score
+                        });
+
+                        console.log(`✅ ${symbol}: $${analysis.price.toFixed(2)}`);
+                    }
+                });
+
+                // Fetch performance stats
+                const statsRes = await fetch('/api/dashboard/stats');
+                const statsData = await statsRes.json();
+                
+                if (statsData && statsData.success && statsData.data) {
+                    updatePerformanceStats(statsData.data);
+                    console.log('✅ Performance stats updated');
+                }
+
+            } catch (err) {
+                console.error('Failed to fetch initial data:', err);
+            }
+        }
+
+        // =====================================================
+        // MANUAL COIN ANALYSIS
+        // =====================================================
 
         async function analyzeManualCoin() {
             const input = document.getElementById('manualCoinInput');
@@ -811,12 +952,20 @@
             `;
         }
 
-        // Initialize
+        // =====================================================
+        // INITIALIZATION
+        // =====================================================
+
         function init() {
+            console.log('🚀 Initializing Professional Dashboard...');
+            
+            // Connect WebSocket for real-time updates
             connectWebSocket();
+            
+            // Load initial data
             fetchInitialData();
             
-            // Auto-refresh every 60 seconds
+            // Refresh every 60 seconds
             setInterval(fetchInitialData, 60000);
             
             // Enter key support for manual analysis
@@ -825,23 +974,12 @@
                     analyzeManualCoin();
                 }
             });
+            
+            console.log('✅ Dashboard initialized');
         }
 
-        async function fetchInitialData() {
-            try {
-                const response = await fetch('/api/dashboard/stats');
-                const data = await response.json();
-                
-                if (data.success) {
-                    updatePerformanceStats(data.data);
-                }
-            } catch (error) {
-                console.error('Failed to fetch initial data:', error);
-            }
-        }
-
-        // Start application
-        init();
+        // Start when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
