@@ -6,6 +6,7 @@ Production-grade WebSocket API for real-time dashboard updates.
 - Position updates
 - Trade notifications
 - Performance metrics
+- Market analysis broadcasts (127 layers)
 - Zero mock/fallback
 
 Author: DEMIR AI PRO
@@ -68,6 +69,7 @@ async def websocket_endpoint(websocket: WebSocket):
     - Position updates
     - Trade notifications
     - Performance metrics
+    - Market analysis (127 layers)
     """
     await manager.connect(websocket)
 
@@ -235,3 +237,28 @@ async def broadcast_performance_update(perf_data: Dict[str, Any]):
         "data": perf_data,
         "timestamp": datetime.now().isoformat()
     })
+
+
+async def broadcast_market_update(analysis_data: Dict[str, Any]):
+    """
+    Broadcast market analysis update to all connected clients
+    Used by professional dashboard for 127-layer analysis streaming
+    
+    Args:
+        analysis_data: Complete 127-layer analysis data including:
+            - symbol: Trading symbol
+            - price: Current price
+            - change_24h: 24h price change
+            - composite_score: Overall signal score (0-100)
+            - layers: All 127 analysis layers
+            - ai_commentary: AI-generated market commentary
+    """
+    try:
+        await manager.broadcast({
+            "type": "market_update",
+            "data": analysis_data,
+            "timestamp": datetime.now().isoformat()
+        })
+        logger.info(f"📡 Market update broadcast: {analysis_data.get('symbol', 'UNKNOWN')} | Score: {analysis_data.get('composite_score', 0)}/100")
+    except Exception as e:
+        logger.error(f"❌ Market broadcast error: {e}")
