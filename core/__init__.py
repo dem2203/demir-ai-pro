@@ -7,13 +7,40 @@ Modular core engine with:
 - Risk management
 - Data pipeline
 - Trading engine (background task)
+
+Graceful degradation: Missing modules won't break the system
 """
 
-from .ai_engine import AIEngine
-from .signal_processor import SignalProcessor
-from .risk_manager import RiskManager
-from .data_pipeline import DataPipeline
-from .trading_engine import TradingEngine, get_engine
+# Trading Engine (always available)
+try:
+    from .trading_engine import TradingEngine, get_engine
+    TRADING_ENGINE_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Trading engine import failed: {e}")
+    TRADING_ENGINE_AVAILABLE = False
+    TradingEngine = None
+    get_engine = None
+
+# Optional AI modules (graceful degradation)
+try:
+    from .ai_engine import AIEngine
+except ImportError:
+    AIEngine = None
+
+try:
+    from .signal_processor import SignalProcessor
+except ImportError:
+    SignalProcessor = None
+
+try:
+    from .risk_manager import RiskManager
+except ImportError:
+    RiskManager = None
+
+try:
+    from .data_pipeline import DataPipeline
+except ImportError:
+    DataPipeline = None
 
 __all__ = [
     'AIEngine',
@@ -22,4 +49,5 @@ __all__ = [
     'DataPipeline',
     'TradingEngine',
     'get_engine',
+    'TRADING_ENGINE_AVAILABLE',
 ]
