@@ -8,6 +8,7 @@ Enterprise-grade AI trading bot with:
 - Production data validation
 - Zero-tolerance for mock data
 - Background AI trading engine
+- Professional multi-layer dashboard
 
 ❌ NO MOCK DATA
 ❌ NO FALLBACK
@@ -84,6 +85,7 @@ except ImportError as e:
 # Import API routes
 from api import router as api_router
 from api.dashboard_api import router as dashboard_router
+from api.dashboard_professional import router as professional_router
 
 # ====================================================================
 # LIFESPAN EVENTS
@@ -134,6 +136,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"📊 Health: http://0.0.0.0:{port}/health")
     logger.info(f"📄 Docs: http://0.0.0.0:{port}/docs")
     logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
+    logger.info(f"📊 Professional: http://0.0.0.0:{port}/professional")
     logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to dashboard)")
     if TRADING_ENGINE_AVAILABLE:
         logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
@@ -175,8 +178,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API",
-    lifespan=lifespan  # Use lifespan instead of on_event
+    description="Enterprise-grade AI crypto trading bot API with multi-layer analysis",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -191,20 +194,21 @@ app.add_middleware(
 # Include API routes
 app.include_router(api_router)
 app.include_router(dashboard_router)
-logger.info("✅ API and Dashboard routes included")
+app.include_router(professional_router)
+logger.info("✅ API, Dashboard, and Professional routes included")
 
 # ====================================================================
-# ROOT ENDPOINT - REDIRECT TO DASHBOARD
+# ROOT ENDPOINT - REDIRECT TO PROFESSIONAL DASHBOARD
 # ====================================================================
 
 @app.get("/")
 async def root():
     """
-    Root endpoint - redirects to live dashboard
+    Root endpoint - redirects to professional dashboard
     Railway production deployment entry point
     """
-    logger.info("👉 Root endpoint accessed - redirecting to dashboard")
-    return RedirectResponse(url="/dashboard")
+    logger.info("👉 Root endpoint accessed - redirecting to professional dashboard")
+    return RedirectResponse(url="/professional")
 
 # ====================================================================
 # HEALTH CHECK ENDPOINT
@@ -246,8 +250,7 @@ if TRADING_ENGINE_AVAILABLE:
         except Exception as e:
             return {
                 "success": False,
-                "error": str(e)
-            }
+                "error": str(e)}
     
     @app.post("/api/engine/start")
     async def start_engine():
