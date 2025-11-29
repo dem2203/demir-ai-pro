@@ -9,6 +9,7 @@ Enterprise-grade AI trading bot with:
 - Zero-tolerance for mock data
 - Background AI trading engine
 - Professional multi-layer dashboard
+- AI/ML prediction dashboard
 
 ❌ NO MOCK DATA
 ❌ NO FALLBACK
@@ -86,6 +87,8 @@ except ImportError as e:
 from api import router as api_router
 from api.dashboard_api import router as dashboard_router
 from api.dashboard_professional import router as professional_router
+from api.dashboard_ai import router as ai_dashboard_router
+from api.ai_endpoints import router as ai_endpoints_router
 
 # ====================================================================
 # LIFESPAN EVENTS
@@ -137,7 +140,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"📄 Docs: http://0.0.0.0:{port}/docs")
     logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
     logger.info(f"📊 Professional: http://0.0.0.0:{port}/professional")
-    logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to dashboard)")
+    logger.info(f"🤖 AI Dashboard: http://0.0.0.0:{port}/ai-dashboard")
+    logger.info(f"🧠 AI Predictions: http://0.0.0.0:{port}/api/ai/latest")
+    logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to professional)")
     if TRADING_ENGINE_AVAILABLE:
         logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
     logger.info("")
@@ -178,7 +183,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API with multi-layer analysis",
+    description="Enterprise-grade AI crypto trading bot API with multi-layer ML analysis",
     lifespan=lifespan
 )
 
@@ -195,7 +200,9 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(dashboard_router)
 app.include_router(professional_router)
-logger.info("✅ API, Dashboard, and Professional routes included")
+app.include_router(ai_dashboard_router)
+app.include_router(ai_endpoints_router)
+logger.info("✅ API, Dashboard, Professional, AI Dashboard, and AI Endpoints routes included")
 
 # ====================================================================
 # ROOT ENDPOINT - REDIRECT TO PROFESSIONAL DASHBOARD
