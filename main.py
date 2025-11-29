@@ -10,6 +10,9 @@ Enterprise-grade AI trading bot with:
 - Background AI trading engine
 - Professional multi-layer dashboard
 - AI/ML prediction dashboard
+- 24/7 AI prediction engine
+- Telegram notifications
+- WebSocket live updates
 
 ❌ NO MOCK DATA
 ❌ NO FALLBACK
@@ -22,7 +25,7 @@ import logging
 import sys
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 import uvicorn
@@ -83,6 +86,24 @@ except ImportError as e:
     logger.warning(f"⚠️  Trading engine not available: {e}")
     TRADING_ENGINE_AVAILABLE = False
 
+# Import AI prediction engine
+try:
+    from core.ai_engine.prediction_engine import get_prediction_engine
+    PREDICTION_ENGINE_AVAILABLE = True
+    logger.info("✅ AI prediction engine module loaded")
+except ImportError as e:
+    logger.warning(f"⚠️  Prediction engine not available: {e}")
+    PREDICTION_ENGINE_AVAILABLE = False
+
+# Import WebSocket manager
+try:
+    from api.websocket_manager import get_ws_manager
+    WEBSOCKET_AVAILABLE = True
+    logger.info("✅ WebSocket manager loaded")
+except ImportError as e:
+    logger.warning(f"⚠️  WebSocket manager not available: {e}")
+    WEBSOCKET_AVAILABLE = False
+
 # Import API routes
 from api import router as api_router
 from api.dashboard_api import router as dashboard_router
@@ -132,6 +153,18 @@ async def lifespan(app: FastAPI):
             import traceback
             logger.error(traceback.format_exc())
     
+    # Start 24/7 AI prediction engine
+    if PREDICTION_ENGINE_AVAILABLE:
+        try:
+            logger.info("🤖 Starting 24/7 AI Prediction Engine...")
+            pred_engine = get_prediction_engine()
+            await pred_engine.start()
+            logger.info("✅ AI Prediction Engine started (24/7 mode with Telegram alerts)")
+        except Exception as e:
+            logger.error(f"❌ Prediction engine startup failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
     # Railway port info
     port = int(os.getenv("PORT", API_PORT))
     logger.info(f"\n✅ {APP_NAME} v{VERSION} is ready!")
@@ -142,9 +175,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"📊 Professional: http://0.0.0.0:{port}/professional")
     logger.info(f"🤖 AI Dashboard: http://0.0.0.0:{port}/ai-dashboard")
     logger.info(f"🧠 AI Predictions: http://0.0.0.0:{port}/api/ai/latest")
+    logger.info(f"🔌 WebSocket: ws://0.0.0.0:{port}/ws/dashboard")
     logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to professional)")
     if TRADING_ENGINE_AVAILABLE:
         logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
+    if PREDICTION_ENGINE_AVAILABLE:
+        logger.info(f"📢 Telegram Alerts: ENABLED (strong buy/sell signals)")
     logger.info("")
     
     # Application is running
@@ -154,6 +190,16 @@ async def lifespan(app: FastAPI):
     logger.info(f"\n\n{'='*60}")
     logger.info(f"{APP_NAME} v{VERSION} - SHUTTING DOWN")
     logger.info(f"{'='*60}\n")
+    
+    # Stop AI prediction engine
+    if PREDICTION_ENGINE_AVAILABLE:
+        try:
+            logger.info("🛑 Stopping AI Prediction Engine...")
+            pred_engine = get_prediction_engine()
+            await pred_engine.stop()
+            logger.info("✅ AI Prediction Engine stopped")
+        except Exception as e:
+            logger.error(f"❌ Prediction engine shutdown error: {e}")
     
     # Stop trading engine
     if TRADING_ENGINE_AVAILABLE:
@@ -183,7 +229,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API with multi-layer ML analysis",
+    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions and Telegram alerts",
     lifespan=lifespan
 )
 
@@ -203,6 +249,32 @@ app.include_router(professional_router)
 app.include_router(ai_dashboard_router)
 app.include_router(ai_endpoints_router)
 logger.info("✅ API, Dashboard, Professional, AI Dashboard, and AI Endpoints routes included")
+
+# ====================================================================
+# WEBSOCKET ENDPOINT FOR REAL-TIME UPDATES
+# ====================================================================
+
+if WEBSOCKET_AVAILABLE:
+    @app.websocket("/ws/dashboard")
+    async def websocket_endpoint(websocket: WebSocket):
+        """
+        WebSocket endpoint for real-time AI predictions
+        Broadcasts updates every 30 seconds
+        """
+        ws_manager = get_ws_manager()
+        await ws_manager.connect(websocket)
+        
+        try:
+            while True:
+                # Keep connection alive
+                data = await websocket.receive_text()
+                logger.debug(f"📬 WebSocket message received: {data}")
+        except WebSocketDisconnect:
+            ws_manager.disconnect(websocket)
+            logger.info("❌ WebSocket client disconnected")
+        except Exception as e:
+            logger.error(f"❌ WebSocket error: {e}")
+            ws_manager.disconnect(websocket)
 
 # ====================================================================
 # ROOT ENDPOINT - REDIRECT TO PROFESSIONAL DASHBOARD
@@ -227,7 +299,9 @@ async def health_check():
     health_data = {
         "status": "healthy",
         "service": APP_NAME,
-        "version": VERSION
+        "version": VERSION,
+        "ai_prediction_engine": "running" if PREDICTION_ENGINE_AVAILABLE else "disabled",
+        "websocket": "available" if WEBSOCKET_AVAILABLE else "disabled"
     }
     
     # Add trading engine status if available
@@ -237,6 +311,17 @@ async def health_check():
             health_data["trading_engine"] = engine.get_status()
         except Exception as e:
             health_data["trading_engine"] = {"error": str(e)}
+    
+    # Add prediction engine status
+    if PREDICTION_ENGINE_AVAILABLE:
+        try:
+            pred_engine = get_prediction_engine()
+            health_data["prediction_engine"] = {
+                "running": pred_engine.is_running,
+                "last_predictions": list(pred_engine.last_predictions.keys())
+            }
+        except Exception as e:
+            health_data["prediction_engine"] = {"error": str(e)}
     
     return health_data
 
@@ -284,6 +369,34 @@ if TRADING_ENGINE_AVAILABLE:
             return {
                 "success": True,
                 "message": "Trading engine stopped"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+# ====================================================================
+# AI PREDICTION ENGINE CONTROL ENDPOINTS
+# ====================================================================
+
+if PREDICTION_ENGINE_AVAILABLE:
+    @app.get("/api/ai/status")
+    async def get_prediction_status():
+        """Get AI prediction engine status"""
+        try:
+            pred_engine = get_prediction_engine()
+            return {
+                "success": True,
+                "data": {
+                    "running": pred_engine.is_running,
+                    "telegram_enabled": pred_engine.telegram_notifier is not None,
+                    "last_predictions": pred_engine.last_predictions,
+                    "thresholds": {
+                        "strong_buy": pred_engine.strong_buy_threshold,
+                        "strong_sell": pred_engine.strong_sell_threshold
+                    }
+                }
             }
         except Exception as e:
             return {
