@@ -1093,12 +1093,14 @@ class ProfessionalTAEngine:
         try:
             parts = []
             
-            # Price action
+            # Price action - FIXED f-string syntax
             change = all_layers.get('change_24h', 0)
             if abs(change) > 5:
-                parts.append(f"{symbol} {"güçlü yükseliş" if change > 0 else "güçlü düşüş"} trendinde (%{change:.2f}).")
+                trend_desc = "güçlü yükseliş" if change > 0 else "güçlü düşüş"
+                parts.append(f"{symbol} {trend_desc} trendinde (%{change:.2f}).")
             elif abs(change) > 2:
-                parts.append(f"{symbol} {"ılımlı yükseliş" if change > 0 else "ılımlı düşüş"} gösteriyor (%{change:.2f}).")
+                trend_desc = "ılımlı yükseliş" if change > 0 else "ılımlı düşüş"
+                parts.append(f"{symbol} {trend_desc} gösteriyor (%{change:.2f}).")
             else:
                 parts.append(f"{symbol} konsolidasyon fazında (%{change:.2f}).")
             
