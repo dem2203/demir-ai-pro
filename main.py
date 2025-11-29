@@ -7,6 +7,7 @@ Enterprise-grade AI trading bot with:
 - Real-time signal generation
 - Production data validation
 - Zero-tolerance for mock data
+- Background AI trading engine
 
 ❌ NO MOCK DATA
 ❌ NO FALLBACK
@@ -70,12 +71,19 @@ try:
 except ImportError:
     logger.warning("⚠️  Integration modules not available - some features may be limited")
 
+# Import trading engine
+try:
+    from core.trading_engine import get_engine
+    TRADING_ENGINE_AVAILABLE = True
+    logger.info("✅ Trading engine module loaded")
+except ImportError as e:
+    logger.warning(f"⚠️  Trading engine not available: {e}")
+    TRADING_ENGINE_AVAILABLE = False
+
 # -------------------------------------------------------------------
-# API ROUTES (BURASI ÖNEMLİ KISIM)
+# API ROUTES
 # -------------------------------------------------------------------
 
-# API router ve dashboard router'ı zorunlu import edelim.
-# Hata varsa deploy patlasın, log'da gerçek sorunu görelim.
 from api import router as api_router
 from api.dashboard_api import router as dashboard_router
 DASHBOARD_AVAILABLE = True
@@ -102,7 +110,7 @@ app.add_middleware(
 # Include API routes
 app.include_router(api_router)
 
-# Include dashboard routes (Phase 3.5)
+# Include dashboard routes
 app.include_router(dashboard_router)
 logger.info("✅ API and Dashboard routes included")
 
@@ -126,11 +134,73 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for Railway"""
-    return {
+    health_data = {
         "status": "healthy",
         "service": APP_NAME,
         "version": VERSION
     }
+    
+    # Add trading engine status if available
+    if TRADING_ENGINE_AVAILABLE:
+        try:
+            engine = get_engine()
+            health_data["trading_engine"] = engine.get_status()
+        except Exception as e:
+            health_data["trading_engine"] = {"error": str(e)}
+    
+    return health_data
+
+# ====================================================================
+# TRADING ENGINE CONTROL ENDPOINTS
+# ====================================================================
+
+if TRADING_ENGINE_AVAILABLE:
+    @app.get("/api/engine/status")
+    async def get_engine_status():
+        """Get trading engine status"""
+        try:
+            engine = get_engine()
+            return {
+                "success": True,
+                "data": engine.get_status()
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @app.post("/api/engine/start")
+    async def start_engine():
+        """Manually start trading engine"""
+        try:
+            engine = get_engine()
+            await engine.start()
+            return {
+                "success": True,
+                "message": "Trading engine started"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @app.post("/api/engine/stop")
+    async def stop_engine():
+        """Manually stop trading engine"""
+        try:
+            engine = get_engine()
+            await engine.stop()
+            return {
+                "success": True,
+                "message": "Trading engine stopped"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
 # ====================================================================
 # STARTUP EVENTS
@@ -151,16 +221,25 @@ async def startup_event():
             logger.info("✅ Database initialized")
         except Exception as e:
             logger.error(f"❌ Database initialization failed: {e}")
-            # Don't exit - allow API to continue without DB for now
     
     # Initialize core modules
     try:
         logger.info("⚙️  Initializing core modules...")
-        # Modules will be initialized here
         logger.info("✅ Core modules initialized")
     except Exception as e:
         logger.error(f"❌ Core initialization failed: {e}")
-        # Don't exit - allow API to continue
+    
+    # Start trading engine
+    if TRADING_ENGINE_AVAILABLE:
+        try:
+            logger.info("🤖 Starting AI Trading Engine...")
+            engine = get_engine()
+            await engine.start()
+            logger.info("✅ AI Trading Engine started in background")
+        except Exception as e:
+            logger.error(f"❌ Trading engine startup failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
     
     # Railway port info
     port = int(os.getenv("PORT", API_PORT))
@@ -171,6 +250,8 @@ async def startup_event():
     if DASHBOARD_AVAILABLE:
         logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
         logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to dashboard)")
+    if TRADING_ENGINE_AVAILABLE:
+        logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
     logger.info("")
 
 @app.on_event("shutdown")
@@ -179,6 +260,16 @@ async def shutdown_event():
     logger.info(f"\n\n{'='*60}")
     logger.info(f"{APP_NAME} v{VERSION} - SHUTTING DOWN")
     logger.info(f"{'='*60}\n")
+    
+    # Stop trading engine
+    if TRADING_ENGINE_AVAILABLE:
+        try:
+            logger.info("🛑 Stopping AI Trading Engine...")
+            engine = get_engine()
+            await engine.stop()
+            logger.info("✅ Trading engine stopped")
+        except Exception as e:
+            logger.error(f"❌ Trading engine shutdown error: {e}")
     
     # Close database connections
     if get_db:
