@@ -8,9 +8,9 @@ Enterprise-grade AI trading bot with:
 - Production data validation
 - Zero-tolerance for mock data
 - Background AI trading engine
+- Professional Trading Terminal (main dashboard)
 - Professional multi-layer dashboard
 - AI/ML prediction dashboard
-- Trading terminal with live signals
 - Manuel coin management
 - 24/7 AI prediction engine
 - Telegram notifications (hourly + strong signals)
@@ -174,18 +174,22 @@ async def lifespan(app: FastAPI):
     logger.info(f"🌐 API server: http://0.0.0.0:{port}")
     logger.info(f"📊 Health: http://0.0.0.0:{port}/health")
     logger.info(f"📄 Docs: http://0.0.0.0:{port}/docs")
-    logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
-    logger.info(f"📊 Professional: http://0.0.0.0:{port}/professional")
-    logger.info(f"🤖 AI Dashboard: http://0.0.0.0:{port}/ai-dashboard")
-    logger.info(f"🕸️ Trading Terminal: http://0.0.0.0:{port}/trading-terminal")
+    logger.info(f"")
+    logger.info(f"🎯 MAIN DASHBOARD: http://0.0.0.0:{port}/trading-terminal")
+    logger.info(f"🕸️ Trading Terminal (root redirect): http://0.0.0.0:{port}/")
+    logger.info(f"")
+    logger.info(f"📈 Alternative Dashboards:")
+    logger.info(f"   - Professional (127 layers): http://0.0.0.0:{port}/professional")
+    logger.info(f"   - AI Dashboard (ML models): http://0.0.0.0:{port}/ai-dashboard")
+    logger.info(f"   - Legacy Dashboard: http://0.0.0.0:{port}/dashboard")
+    logger.info(f"")
     logger.info(f"🧠 AI Predictions: http://0.0.0.0:{port}/api/ai/latest")
     logger.info(f"🔌 WebSocket: ws://0.0.0.0:{port}/ws/dashboard")
-    logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to professional)")
+    logger.info(f"💰 Coin Manager: http://0.0.0.0:{port}/api/coins")
     if TRADING_ENGINE_AVAILABLE:
         logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
     if PREDICTION_ENGINE_AVAILABLE:
         logger.info(f"📢 Telegram: Hourly status (BTC/ETH/LTC) + Strong signals (all coins)")
-    logger.info(f"💰 Coin Manager: http://0.0.0.0:{port}/api/coins")
     logger.info("")
     
     # Application is running
@@ -234,7 +238,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions, Trading Terminal, and Telegram alerts",
+    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions, Professional Trading Terminal, and Telegram alerts",
     lifespan=lifespan
 )
 
@@ -257,18 +261,26 @@ app.include_router(coin_manager_router)
 logger.info("✅ API routes, Dashboards, AI Endpoints, and Coin Manager included")
 
 # ====================================================================
-# TRADING TERMINAL ENDPOINT
+# TRADING TERMINAL ENDPOINT (MAIN DASHBOARD)
 # ====================================================================
 
 @app.get("/trading-terminal")
 async def trading_terminal():
     """
-    Professional Trading Terminal with live AI signals
+    Professional Trading Terminal with live AI signals (MAIN DASHBOARD)
+    
+    Features:
+    - Real-time Binance prices (30s refresh)
+    - WebSocket AI signals
+    - 127 layer status
+    - Dynamic coin management
+    - Telegram integration
     """
     try:
         return FileResponse("ui/trading_terminal.html")
     except FileNotFoundError:
-        return {"error": "Trading terminal not found"}
+        logger.error("❌ Trading terminal file not found")
+        return {"error": "Trading terminal not found", "path": "ui/trading_terminal.html"}
 
 # ====================================================================
 # WEBSOCKET ENDPOINT FOR REAL-TIME UPDATES
@@ -297,17 +309,17 @@ if WEBSOCKET_AVAILABLE:
             ws_manager.disconnect(websocket)
 
 # ====================================================================
-# ROOT ENDPOINT - REDIRECT TO PROFESSIONAL DASHBOARD
+# ROOT ENDPOINT - REDIRECT TO TRADING TERMINAL (MAIN DASHBOARD)
 # ====================================================================
 
 @app.get("/")
 async def root():
     """
-    Root endpoint - redirects to professional dashboard
+    Root endpoint - redirects to Trading Terminal (main dashboard)
     Railway production deployment entry point
     """
-    logger.info("👉 Root endpoint accessed - redirecting to professional dashboard")
-    return RedirectResponse(url="/professional")
+    logger.info("👉 Root endpoint accessed - redirecting to Trading Terminal")
+    return RedirectResponse(url="/trading-terminal")
 
 # ====================================================================
 # HEALTH CHECK ENDPOINT
@@ -320,6 +332,7 @@ async def health_check():
         "status": "healthy",
         "service": APP_NAME,
         "version": VERSION,
+        "main_dashboard": "/trading-terminal",
         "ai_prediction_engine": "running" if PREDICTION_ENGINE_AVAILABLE else "disabled",
         "websocket": "available" if WEBSOCKET_AVAILABLE else "disabled",
         "coin_manager": "available"
