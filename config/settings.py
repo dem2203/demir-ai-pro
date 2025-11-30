@@ -1,5 +1,5 @@
 """
-🔧 DEMIR AI PRO v8.0 - PRODUCTION CONFIGURATION
+🔧 DEMIR AI PRO v9.0 PROFESSIONAL - PRODUCTION CONFIGURATION
 
 Enterprise-grade configuration management with strict validation.
 All production parameters must be provided via environment variables.
@@ -11,6 +11,7 @@ All production parameters must be provided via environment variables.
 ✅ 100% Production Environment Variables
 ✅ Validated API Keys
 ✅ Real-Time Data Sources Only
+✅ Professional AI Standards
 """
 
 import os
@@ -22,10 +23,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ========================================================================
-# APPLICATION METADATA
+# APPLICATION METADATA v9.0 PROFESSIONAL
 # ========================================================================
 
-VERSION = os.getenv("VERSION", "8.0.0")
+VERSION = os.getenv("VERSION", "9.0.0")
 APP_NAME = "DEMIR AI PRO"
 FULL_NAME = f"{APP_NAME} v{VERSION}"
 
@@ -41,11 +42,11 @@ if ENVIRONMENT not in ["production", "development"]:
     raise ValueError(f"Invalid ENVIRONMENT: {ENVIRONMENT}. Must be 'production' or 'development'")
 
 # ========================================================================
-# DATABASE CONFIGURATION (REQUIRED)
+# DATABASE CONFIGURATION (OPTIONAL FOR v9.0)
 # ========================================================================
 
 def _get_database_url() -> str:
-    """Get database URL with fallback logic"""
+    """Get database URL with graceful fallback"""
     # Primary: DATABASE_URL (from Railway or .env)
     primary = os.getenv("DATABASE_URL")
     if primary:
@@ -56,11 +57,12 @@ def _get_database_url() -> str:
     if fallback:
         return fallback
     
-    # If neither exists, raise critical error
-    print("❌ CRITICAL ERROR: Neither DATABASE_URL nor DATABASE_PUBLIC_URL environment variable is set!")
-    sys.exit(1)
+    # v9.0: Database is now OPTIONAL (graceful degradation)
+    print("⚠️  WARNING: No database configured. Running in memory-only mode.")
+    return ""  # Empty = no database
 
 DATABASE_URL = _get_database_url()
+DATABASE_ENABLED = bool(DATABASE_URL)
 
 # PostgreSQL connection pool settings
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "20"))
@@ -216,7 +218,7 @@ LOG_FORMAT = os.getenv("LOG_FORMAT", "json")  # json or text
 HEALTH_CHECK_INTERVAL = int(os.getenv("HEALTH_CHECK_INTERVAL", "60"))  # seconds
 
 # ========================================================================
-# AI/ML CONFIGURATION
+# AI/ML CONFIGURATION v9.0
 # ========================================================================
 
 ML_MODEL_PATH = os.getenv("ML_MODEL_PATH", "./models")
@@ -254,13 +256,14 @@ if not ADVISORY_MODE_ENABLED and not DRY_RUN:
     print("⚠️  WARNING: Live trading enabled! Make sure you know what you're doing.")
 
 # ========================================================================
-# VALIDATION FUNCTION (Required for main.py)
+# VALIDATION FUNCTION v9.0 (Required for main.py)
 # ========================================================================
 
 def validate_or_exit() -> bool:
-    """Validate all critical configuration"""
+    """Validate all critical configuration - v9.0 graceful degradation"""
+    # Only Binance API is REQUIRED in v9.0
+    # Database is now optional
     critical_vars = [
-        ("DATABASE_URL", DATABASE_URL),
         ("BINANCE_API_KEY", BINANCE_API_KEY),
         ("BINANCE_API_SECRET", BINANCE_API_SECRET),
     ]
@@ -270,19 +273,26 @@ def validate_or_exit() -> bool:
             print(f"❌ CRITICAL ERROR: {var_name} is not set!")
             sys.exit(1)
     
+    # Warn about optional services
+    if not DATABASE_ENABLED:
+        print("⚠️  WARNING: Database not configured - running in memory-only mode")
+    
+    if not TELEGRAM_ENABLED:
+        print("⚠️  INFO: Telegram notifications disabled")
+    
     return True
 
 # ========================================================================
-# STARTUP BANNER
+# STARTUP BANNER v9.0 PROFESSIONAL
 # ========================================================================
 
 print(f"""
 ┌──────────────────────────────────────────────────────────────┐
-│  ⚡ {FULL_NAME} - PRODUCTION CONFIG LOADED                     │
+│  ⚡ {FULL_NAME} PROFESSIONAL - CONFIG LOADED                   │
 └──────────────────────────────────────────────────────────────┘
 
 ✅ Environment: {ENVIRONMENT.upper()}
-✅ Database: {_get_database_url()[:50]}...
+✅ Database: {('Connected: ' + DATABASE_URL[:50] + '...') if DATABASE_ENABLED else 'DISABLED (Memory-only mode)'}
 ✅ Binance API: {'Connected' if BINANCE_API_KEY else 'NOT SET'}
 ✅ Telegram: {'Enabled' if TELEGRAM_ENABLED else 'Disabled'}
 ✅ Advisory Mode: {ADVISORY_MODE_ENABLED}
@@ -290,5 +300,6 @@ print(f"""
 
 ⚠️  Zero Mock Data Policy Active
 ⚠️  Production Validation Enabled
+⚠️  Professional AI Standards v9.0
 
 """)
