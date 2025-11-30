@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DEMIR AI PRO v9.0 - Main Application PROFESSIONAL
+DEMIR AI PRO v9.0 PROFESSIONAL - Main Application
 
 Enterprise-grade AI trading bot with:
 - Multi-layer ML ensemble
@@ -8,7 +8,7 @@ Enterprise-grade AI trading bot with:
 - Production data validation
 - Zero-tolerance for mock data
 - Background AI trading engine
-- Professional Trading Terminal (main dashboard)
+- ULTRA Professional Trading Terminal (main dashboard)
 - Professional multi-layer dashboard
 - AI/ML prediction dashboard
 - Manuel coin management
@@ -26,7 +26,7 @@ Enterprise-grade AI trading bot with:
 ❌ NO TEST DATA
 
 ✅ 100% Production Real-Time Data
-✅ Professional AI Standards
+✅ Professional AI Standards v9.0
 """
 
 import logging
@@ -113,7 +113,7 @@ validate_or_exit()
 # IMPORT MODULES WITH GRACEFUL DEGRADATION
 # ====================================================================
 
-# Database
+# Database (now optional in v9.0)
 try:
     from database import get_db
     from database.models import create_all_tables
@@ -214,7 +214,7 @@ async def lifespan(app: FastAPI):
     
     app_state.health_status = "initializing"
     
-    # Initialize database
+    # Initialize database (optional in v9.0)
     if DATABASE_AVAILABLE and get_db and create_all_tables:
         try:
             db = get_db()
@@ -223,9 +223,10 @@ async def lifespan(app: FastAPI):
             logger.info("Database initialized")
         except Exception as e:
             app_state.services_status['database'] = False
-            logger.error("Database initialization failed", error=str(e))
+            logger.warning("Database initialization failed - running in memory-only mode", error=str(e))
     else:
         app_state.services_status['database'] = False
+        logger.info("Database not configured - memory-only mode")
     
     # Initialize core modules
     if CORE_MODULES_AVAILABLE:
@@ -280,7 +281,7 @@ async def lifespan(app: FastAPI):
                version=VERSION,
                port=port,
                host="0.0.0.0",
-               main_dashboard="/trading-terminal",
+               main_dashboard="/",
                health_check="/health",
                api_docs="/docs")
     
@@ -333,7 +334,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions, Professional Trading Terminal, Real-time Prices, and Telegram alerts",
+    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions, Ultra Professional Trading Terminal, Real-time Prices, and Telegram alerts",
     lifespan=lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc"
@@ -449,33 +450,43 @@ logger.info("API routes included",
                    "ai_endpoints", "coin_manager", "prices"])
 
 # ====================================================================
-# TRADING TERMINAL ENDPOINT (MAIN DASHBOARD)
+# ULTRA PROFESSIONAL TRADING TERMINAL (MAIN DASHBOARD) v9.0
 # ====================================================================
 
-@app.get("/trading-terminal")
-async def trading_terminal():
+@app.get("/")
+async def root_ultra_dashboard():
     """
-    Professional Trading Terminal with live AI signals (MAIN DASHBOARD)
+    ROOT → Ultra Professional Trading Terminal v9.0
     
     Features:
-    - Real-time Binance prices (30s refresh)
-    - WebSocket AI signals
-    - 127 layer status
-    - Dynamic coin management
-    - Telegram integration
+    - TradingView-style modern design
+    - Real-time AI Brain visualization
+    - 127 technical layers display
+    - Live market data
+    - AI predictions breakdown
+    - WebSocket real-time updates
+    - Professional color scheme
+    - Responsive layout
     """
     try:
-        return FileResponse("ui/trading_terminal.html")
+        return FileResponse("ui/trading_terminal_ultra.html")
     except FileNotFoundError:
-        logger.error("Trading terminal file not found", path="ui/trading_terminal.html")
+        logger.error("Ultra dashboard file not found", path="ui/trading_terminal_ultra.html")
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
                 "success": False,
-                "error": "Trading terminal not found",
-                "path": "ui/trading_terminal.html"
+                "error": "Ultra dashboard not found",
+                "path": "ui/trading_terminal_ultra.html"
             }
         )
+
+# Legacy endpoint (backward compatibility)
+@app.get("/trading-terminal")
+async def trading_terminal_legacy():
+    """Legacy trading terminal endpoint - redirects to ultra dashboard"""
+    logger.info("Legacy trading terminal accessed - redirecting to ultra dashboard")
+    return RedirectResponse(url="/")
 
 # ====================================================================
 # WEBSOCKET ENDPOINT FOR REAL-TIME UPDATES
@@ -504,22 +515,12 @@ if WEBSOCKET_AVAILABLE:
             ws_manager.disconnect(websocket)
 
 # ====================================================================
-# ROOT ENDPOINT - REDIRECT TO TRADING TERMINAL
-# ====================================================================
-
-@app.get("/")
-async def root():
-    """Root endpoint - redirects to Trading Terminal (main dashboard)"""
-    logger.info("Root endpoint accessed - redirecting to Trading Terminal")
-    return RedirectResponse(url="/trading-terminal")
-
-# ====================================================================
 # HEALTH CHECK ENDPOINT
 # ====================================================================
 
 @app.get("/health")
 async def health_check():
-    """Professional health check endpoint with system metrics"""
+    """Professional health check endpoint with system metrics v9.0"""
     try:
         uptime_seconds = app_state.get_uptime_seconds()
         
@@ -537,7 +538,9 @@ async def health_check():
             },
             "services": app_state.services_status,
             "endpoints": {
-                "main_dashboard": "/trading-terminal",
+                "main_dashboard": "/",
+                "ultra_dashboard": "/",
+                "legacy_terminal": "/trading-terminal",
                 "health": "/health",
                 "api_docs": "/api/docs"
             }
@@ -659,7 +662,7 @@ if TRADING_ENGINE_AVAILABLE:
 if PREDICTION_ENGINE_AVAILABLE:
     @app.get("/api/ai/status")
     async def get_prediction_status():
-        """Get AI prediction engine status with performance metrics"""
+        """Get AI prediction engine status with performance metrics v9.0"""
         try:
             pred_engine = get_prediction_engine()
             metrics = pred_engine.get_performance_metrics()
