@@ -10,8 +10,10 @@ Enterprise-grade AI trading bot with:
 - Background AI trading engine
 - Professional multi-layer dashboard
 - AI/ML prediction dashboard
+- Trading terminal with live signals
+- Manuel coin management
 - 24/7 AI prediction engine
-- Telegram notifications
+- Telegram notifications (hourly + strong signals)
 - WebSocket live updates
 
 ❌ NO MOCK DATA
@@ -27,7 +29,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 import uvicorn
 
 # Configure logging
@@ -110,6 +112,7 @@ from api.dashboard_api import router as dashboard_router
 from api.dashboard_professional import router as professional_router
 from api.dashboard_ai import router as ai_dashboard_router
 from api.ai_endpoints import router as ai_endpoints_router
+from api.coin_manager import router as coin_manager_router
 
 # ====================================================================
 # LIFESPAN EVENTS
@@ -159,7 +162,7 @@ async def lifespan(app: FastAPI):
             logger.info("🤖 Starting 24/7 AI Prediction Engine...")
             pred_engine = get_prediction_engine()
             await pred_engine.start()
-            logger.info("✅ AI Prediction Engine started (24/7 mode with Telegram alerts)")
+            logger.info("✅ AI Prediction Engine started (24/7 mode with Telegram hourly + strong signals)")
         except Exception as e:
             logger.error(f"❌ Prediction engine startup failed: {e}")
             import traceback
@@ -174,13 +177,15 @@ async def lifespan(app: FastAPI):
     logger.info(f"📈 Dashboard: http://0.0.0.0:{port}/dashboard")
     logger.info(f"📊 Professional: http://0.0.0.0:{port}/professional")
     logger.info(f"🤖 AI Dashboard: http://0.0.0.0:{port}/ai-dashboard")
+    logger.info(f"🕸️ Trading Terminal: http://0.0.0.0:{port}/trading-terminal")
     logger.info(f"🧠 AI Predictions: http://0.0.0.0:{port}/api/ai/latest")
     logger.info(f"🔌 WebSocket: ws://0.0.0.0:{port}/ws/dashboard")
     logger.info(f"🏠 Root: http://0.0.0.0:{port}/ (redirects to professional)")
     if TRADING_ENGINE_AVAILABLE:
         logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
     if PREDICTION_ENGINE_AVAILABLE:
-        logger.info(f"📢 Telegram Alerts: ENABLED (strong buy/sell signals)")
+        logger.info(f"📢 Telegram: Hourly status (BTC/ETH/LTC) + Strong signals (all coins)")
+    logger.info(f"💰 Coin Manager: http://0.0.0.0:{port}/api/coins")
     logger.info("")
     
     # Application is running
@@ -229,7 +234,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions and Telegram alerts",
+    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions, Trading Terminal, and Telegram alerts",
     lifespan=lifespan
 )
 
@@ -248,7 +253,22 @@ app.include_router(dashboard_router)
 app.include_router(professional_router)
 app.include_router(ai_dashboard_router)
 app.include_router(ai_endpoints_router)
-logger.info("✅ API, Dashboard, Professional, AI Dashboard, and AI Endpoints routes included")
+app.include_router(coin_manager_router)
+logger.info("✅ API routes, Dashboards, AI Endpoints, and Coin Manager included")
+
+# ====================================================================
+# TRADING TERMINAL ENDPOINT
+# ====================================================================
+
+@app.get("/trading-terminal")
+async def trading_terminal():
+    """
+    Professional Trading Terminal with live AI signals
+    """
+    try:
+        return FileResponse("ui/trading_terminal.html")
+    except FileNotFoundError:
+        return {"error": "Trading terminal not found"}
 
 # ====================================================================
 # WEBSOCKET ENDPOINT FOR REAL-TIME UPDATES
@@ -301,7 +321,8 @@ async def health_check():
         "service": APP_NAME,
         "version": VERSION,
         "ai_prediction_engine": "running" if PREDICTION_ENGINE_AVAILABLE else "disabled",
-        "websocket": "available" if WEBSOCKET_AVAILABLE else "disabled"
+        "websocket": "available" if WEBSOCKET_AVAILABLE else "disabled",
+        "coin_manager": "available"
     }
     
     # Add trading engine status if available
@@ -318,10 +339,19 @@ async def health_check():
             pred_engine = get_prediction_engine()
             health_data["prediction_engine"] = {
                 "running": pred_engine.is_running,
-                "last_predictions": list(pred_engine.last_predictions.keys())
+                "last_predictions": list(pred_engine.last_predictions.keys()),
+                "hourly_updates": "enabled",
+                "strong_signals": "enabled"
             }
         except Exception as e:
             health_data["prediction_engine"] = {"error": str(e)}
+    
+    # Add coin manager status
+    try:
+        from api.coin_manager import get_monitored_coins
+        health_data["monitored_coins"] = get_monitored_coins()
+    except:
+        health_data["monitored_coins"] = []
     
     return health_data
 
@@ -386,11 +416,17 @@ if PREDICTION_ENGINE_AVAILABLE:
         """Get AI prediction engine status"""
         try:
             pred_engine = get_prediction_engine()
+            from api.coin_manager import get_monitored_coins
             return {
                 "success": True,
                 "data": {
                     "running": pred_engine.is_running,
                     "telegram_enabled": pred_engine.telegram_notifier is not None,
+                    "telegram_features": {
+                        "hourly_status": "enabled (BTC/ETH/LTC prices)",
+                        "strong_signals": "enabled (all coins, >=85% confidence)"
+                    },
+                    "monitored_coins": get_monitored_coins(),
                     "last_predictions": pred_engine.last_predictions,
                     "thresholds": {
                         "strong_buy": pred_engine.strong_buy_threshold,
