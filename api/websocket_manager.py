@@ -2,18 +2,18 @@
 """
 DEMIR AI PRO v8.0 - WebSocket Manager
 
-Manages WebSocket connections for real-time dashboard updates:
-- Client connection pooling
+Real-time WebSocket connection management:
+- Client connection/disconnection
 - Broadcast AI predictions
-- Auto-reconnect handling
-- Production error handling
+- Latency tracking
+- Reconnection handling
 """
 
 import logging
-import asyncio
 import json
-from typing import Set
-from fastapi import WebSocket, WebSocketDisconnect
+import asyncio
+from typing import List, Dict
+from fastapi import WebSocket
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -24,96 +24,130 @@ class WebSocketManager:
     """
     
     def __init__(self):
-        self.active_connections: Set[WebSocket] = set()
+        self.active_connections: List[WebSocket] = []
         self.broadcast_task = None
-        logger.info("✅ WebSocketManager initialized")
-    
+        
     async def connect(self, websocket: WebSocket):
         """
         Accept new WebSocket connection
         """
         await websocket.accept()
-        self.active_connections.add(websocket)
-        logger.info(f"✅ WebSocket connected (total: {len(self.active_connections)})")
+        self.active_connections.append(websocket)
+        logger.info(f"✅ WebSocket connected. Total: {len(self.active_connections)}")
         
-        # Start broadcast task if not running
-        if not self.broadcast_task:
-            self.broadcast_task = asyncio.create_task(self._broadcast_loop())
-    
     def disconnect(self, websocket: WebSocket):
         """
         Remove WebSocket connection
         """
-        self.active_connections.discard(websocket)
-        logger.info(f"❌ WebSocket disconnected (total: {len(self.active_connections)})")
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logger.info(f"❌ WebSocket disconnected. Remaining: {len(self.active_connections)}")
     
-    async def send_personal_message(self, message: dict, websocket: WebSocket):
+    async def send_personal_message(self, message: str, websocket: WebSocket):
         """
         Send message to specific client
         """
         try:
-            await websocket.send_json(message)
+            await websocket.send_text(message)
         except Exception as e:
             logger.error(f"❌ Send message error: {e}")
             self.disconnect(websocket)
     
-    async def broadcast(self, message: dict):
+    async def broadcast(self, message: Dict):
         """
         Broadcast message to all connected clients
+        
+        Args:
+            message: Dictionary to broadcast (will be JSON serialized)
         """
         if not self.active_connections:
             return
         
-        disconnected = set()
-        
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except WebSocketDisconnect:
-                disconnected.add(connection)
-            except Exception as e:
-                logger.error(f"❌ Broadcast error: {e}")
-                disconnected.add(connection)
-        
-        # Remove disconnected clients
-        for conn in disconnected:
-            self.disconnect(conn)
+        try:
+            text = json.dumps(message, default=str)
+            
+            # Send to all clients
+            disconnected = []
+            for connection in self.active_connections:
+                try:
+                    await connection.send_text(text)
+                except Exception as e:
+                    logger.error(f"❌ Broadcast error to client: {e}")
+                    disconnected.append(connection)
+            
+            # Remove disconnected clients
+            for conn in disconnected:
+                self.disconnect(conn)
+                
+            logger.debug(f"📡 Broadcast to {len(self.active_connections)} clients")
+            
+        except Exception as e:
+            logger.error(f"❌ Broadcast serialization error: {e}")
     
-    async def _broadcast_loop(self):
+    async def broadcast_ai_snapshot(self, signals: Dict):
         """
-        Background task to broadcast AI predictions every 30 seconds
+        Broadcast AI prediction snapshot to all clients
+        
+        Args:
+            signals: Dictionary of AI predictions by symbol
         """
-        logger.info("🔄 Starting WebSocket broadcast loop (30s intervals)")
+        message = {
+            "type": "ai_snapshot",
+            "data": signals,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        await self.broadcast(message)
+    
+    async def start_broadcast_loop(self, interval: int = 30):
+        """
+        Start background task for periodic broadcasts
+        
+        Args:
+            interval: Broadcast interval in seconds (default: 30)
+        """
+        logger.info(f"🔁 Starting broadcast loop (interval: {interval}s)")
         
         while True:
             try:
-                if self.active_connections:
-                    # Get latest predictions
+                await asyncio.sleep(interval)
+                
+                if not self.active_connections:
+                    continue
+                
+                # Get AI snapshot from prediction engine
+                try:
                     from core.ai_engine.prediction_engine import get_prediction_engine
-                    engine = get_prediction_engine()
+                    from api.coin_manager import get_monitored_coins
                     
-                    # Broadcast predictions for each symbol
-                    for symbol in ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']:
-                        if symbol in engine.last_predictions:
-                            prediction = engine.last_predictions[symbol]
-                            await self.broadcast({
-                                'type': 'ai_update',
-                                'symbol': symbol,
-                                **prediction
-                            })
-                
-                await asyncio.sleep(30)
-                
+                    pred_engine = get_prediction_engine()
+                    coins = get_monitored_coins()
+                    
+                    signals = {}
+                    for symbol in coins:
+                        if symbol in pred_engine.last_predictions:
+                            signals[symbol] = pred_engine.last_predictions[symbol]
+                    
+                    if signals:
+                        await self.broadcast_ai_snapshot(signals)
+                        logger.info(f"✅ Broadcast {len(signals)} AI signals")
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Broadcast loop error: {e}")
+                    
+            except asyncio.CancelledError:
+                logger.info("🛑 Broadcast loop cancelled")
+                break
             except Exception as e:
-                logger.error(f"❌ Broadcast loop error: {e}")
-                await asyncio.sleep(10)
-
+                logger.error(f"❌ Broadcast loop fatal error: {e}")
+                await asyncio.sleep(5)
 
 # Singleton instance
 _ws_manager = None
 
 def get_ws_manager() -> WebSocketManager:
-    """Get singleton WebSocketManager instance"""
+    """
+    Get WebSocket manager singleton instance
+    """
     global _ws_manager
     if _ws_manager is None:
         _ws_manager = WebSocketManager()
