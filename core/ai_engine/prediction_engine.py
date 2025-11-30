@@ -9,7 +9,8 @@ Production AI prediction system with:
 - Gradient Boosting classifier
 - Weighted ensemble voting
 - 24/7 continuous prediction
-- Telegram notifications
+- Telegram notifications (hourly + strong signals)
+- Dynamic coin monitoring
 
 ❌ NO MOCK DATA
 ✅ 100% Real ML Predictions
@@ -18,7 +19,7 @@ Production AI prediction system with:
 import logging
 import os
 import asyncio
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from datetime import datetime
 import numpy as np
 
@@ -35,6 +36,7 @@ class PredictionEngine:
         self.is_running = False
         self.last_predictions = {}
         self.telegram_notifier = None
+        self.last_hourly_update = None
         
         # Prediction thresholds for Telegram alerts
         self.strong_buy_threshold = 0.85  # 85% confidence
@@ -58,6 +60,7 @@ class PredictionEngine:
             # Start prediction loop
             self.is_running = True
             asyncio.create_task(self._prediction_loop())
+            asyncio.create_task(self._hourly_status_loop())
             
             logger.info("✅ AI Prediction Engine started (24/7 mode)")
             
@@ -111,6 +114,7 @@ class PredictionEngine:
                     "🤖 DEMIR AI PRO v8.0 Started\n"
                     "✅ 24/7 Prediction Engine Active\n"
                     "📊 Monitoring: BTCUSDT, ETHUSDT, LTCUSDT\n"
+                    "🔔 Hourly status updates enabled\n"
                     f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 )
                 logger.info("✅ Telegram notifications enabled")
@@ -129,8 +133,8 @@ class PredictionEngine:
         
         while self.is_running:
             try:
-                # Generate predictions for main symbols
-                symbols = ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
+                # Get monitored coins (default 3 + user-added)
+                symbols = await self._get_monitored_coins()
                 
                 for symbol in symbols:
                     prediction = await self.predict(symbol)
@@ -148,6 +152,83 @@ class PredictionEngine:
             except Exception as e:
                 logger.error(f"❌ Prediction loop error: {e}")
                 await asyncio.sleep(60)  # Wait 1 min on error
+    
+    async def _hourly_status_loop(self):
+        """
+        Hourly status update loop
+        Sends BTC, ETH, LTC prices to Telegram every hour
+        """
+        logger.info("🔔 Starting hourly status updates")
+        
+        while self.is_running:
+            try:
+                # Wait until next hour
+                now = datetime.now()
+                seconds_until_next_hour = 3600 - (now.minute * 60 + now.second)
+                
+                # First run or hourly trigger
+                if self.last_hourly_update is None or seconds_until_next_hour < 60:
+                    await self._send_hourly_status()
+                    self.last_hourly_update = now
+                    await asyncio.sleep(seconds_until_next_hour + 60)  # Wait until next hour + buffer
+                else:
+                    await asyncio.sleep(60)  # Check every minute
+                    
+            except Exception as e:
+                logger.error(f"❌ Hourly status error: {e}")
+                await asyncio.sleep(300)  # Wait 5 min on error
+    
+    async def _send_hourly_status(self):
+        """
+        Send hourly status update with BTC, ETH, LTC prices
+        """
+        try:
+            if not self.telegram_notifier:
+                return
+            
+            # Get current prices for main coins
+            from integrations.binance_client import get_binance_client
+            binance = get_binance_client()
+            
+            btc_price = await binance.get_current_price('BTCUSDT')
+            eth_price = await binance.get_current_price('ETHUSDT')
+            ltc_price = await binance.get_current_price('LTCUSDT')
+            
+            # Get 24h change
+            btc_change = await binance.get_24h_change('BTCUSDT')
+            eth_change = await binance.get_24h_change('ETHUSDT')
+            ltc_change = await binance.get_24h_change('LTCUSDT')
+            
+            # Format message
+            message = (
+                "🔔 HOURLY STATUS UPDATE\n\n"
+                f"🔸 BTC: ${btc_price:,.2f} ({btc_change:+.2f}%)\n"
+                f"🔹 ETH: ${eth_price:,.2f} ({eth_change:+.2f}%)\n"
+                f"🟦 LTC: ${ltc_price:,.2f} ({ltc_change:+.2f}%)\n\n"
+                f"🤖 DEMIR AI PRO v8.0\n"
+                f"✅ 24/7 Active\n"
+                f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
+            
+            await self.telegram_notifier.send_message(message)
+            logger.info("📤 Hourly status update sent")
+            
+        except Exception as e:
+            logger.error(f"❌ Hourly status update failed: {e}")
+    
+    async def _get_monitored_coins(self) -> List[str]:
+        """
+        Get list of currently monitored coins
+        
+        Returns:
+            List of trading pairs (default 3 + user-added)
+        """
+        try:
+            from api.coin_manager import get_monitored_coins
+            return get_monitored_coins()
+        except:
+            # Fallback to default 3 coins
+            return ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
     
     async def predict(self, symbol: str) -> Optional[Dict]:
         """
@@ -204,7 +285,6 @@ class PredictionEngine:
         LSTM time-series prediction
         """
         # TODO: Use actual trained LSTM model
-        # For now, use technical indicators
         rsi = features.get('rsi_14', 50)
         macd_signal = 'BULLISH' if features.get('macd_histogram', 0) > 0 else 'BEARISH'
         
@@ -308,6 +388,7 @@ class PredictionEngine:
     async def _check_and_alert(self, symbol: str, prediction: Dict):
         """
         Check for strong signals and send Telegram alerts
+        Monitors ALL coins (default 3 + user-added)
         """
         try:
             if not self.telegram_notifier:
