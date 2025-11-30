@@ -15,6 +15,7 @@ Enterprise-grade AI trading bot with:
 - 24/7 AI prediction engine
 - Telegram notifications (hourly + strong signals)
 - WebSocket live updates
+- Real-time Binance price API
 
 ❌ NO MOCK DATA
 ❌ NO FALLBACK
@@ -113,6 +114,7 @@ from api.dashboard_professional import router as professional_router
 from api.dashboard_ai import router as ai_dashboard_router
 from api.ai_endpoints import router as ai_endpoints_router
 from api.coin_manager import router as coin_manager_router
+from api.prices import router as prices_router
 
 # ====================================================================
 # LIFESPAN EVENTS
@@ -183,9 +185,16 @@ async def lifespan(app: FastAPI):
     logger.info(f"   - AI Dashboard (ML models): http://0.0.0.0:{port}/ai-dashboard")
     logger.info(f"   - Legacy Dashboard: http://0.0.0.0:{port}/dashboard")
     logger.info(f"")
-    logger.info(f"🧠 AI Predictions: http://0.0.0.0:{port}/api/ai/latest")
+    logger.info(f"🧠 AI Endpoints:")
+    logger.info(f"   - Latest Prediction: http://0.0.0.0:{port}/api/ai/latest")
+    logger.info(f"   - AI Snapshot: http://0.0.0.0:{port}/api/ai/snapshot")
+    logger.info(f"   - Model Performance: http://0.0.0.0:{port}/api/ai/performance")
+    logger.info(f"")
+    logger.info(f"💰 Price & Coin Management:")
+    logger.info(f"   - Real-time Prices: http://0.0.0.0:{port}/api/prices")
+    logger.info(f"   - Coin Manager: http://0.0.0.0:{port}/api/coins")
+    logger.info(f"")
     logger.info(f"🔌 WebSocket: ws://0.0.0.0:{port}/ws/dashboard")
-    logger.info(f"💰 Coin Manager: http://0.0.0.0:{port}/api/coins")
     if TRADING_ENGINE_AVAILABLE:
         logger.info(f"🤖 Engine Status: http://0.0.0.0:{port}/api/engine/status")
     if PREDICTION_ENGINE_AVAILABLE:
@@ -238,7 +247,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions, Professional Trading Terminal, and Telegram alerts",
+    description="Enterprise-grade AI crypto trading bot API with 24/7 ML predictions, Professional Trading Terminal, Real-time Prices, and Telegram alerts",
     lifespan=lifespan
 )
 
@@ -258,7 +267,8 @@ app.include_router(professional_router)
 app.include_router(ai_dashboard_router)
 app.include_router(ai_endpoints_router)
 app.include_router(coin_manager_router)
-logger.info("✅ API routes, Dashboards, AI Endpoints, and Coin Manager included")
+app.include_router(prices_router)
+logger.info("✅ All API routes included: dashboards, AI, coins, prices, WebSocket")
 
 # ====================================================================
 # TRADING TERMINAL ENDPOINT (MAIN DASHBOARD)
@@ -335,7 +345,8 @@ async def health_check():
         "main_dashboard": "/trading-terminal",
         "ai_prediction_engine": "running" if PREDICTION_ENGINE_AVAILABLE else "disabled",
         "websocket": "available" if WEBSOCKET_AVAILABLE else "disabled",
-        "coin_manager": "available"
+        "coin_manager": "available",
+        "price_api": "available"
     }
     
     # Add trading engine status if available
