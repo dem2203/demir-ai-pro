@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""DEMIR AI PRO v10.0 PROFESSIONAL ULTRA - Main Application
+"""DEMIR AI PRO v10.1 PROFESSIONAL ULTRA - Main Application
 
 Enterprise-grade AI trading bot with:
+- PURE AI predictions (NO FALLBACK)
 - Real-time signal generation with multi-component fusion
 - Market intelligence (order book, whale detection, sentiment)
 - Advanced ML predictions (LSTM, XGBoost, RF, GB)
 - Professional Telegram alerts (<30 sec latency)
-- Ultra Trading Terminal (TradingView-style)
+- Ultra Trading Terminal v10.1 (100% real data)
 - 24/7 monitoring and alerts
 - WebSocket real-time updates
 - Comprehensive risk management
 
 ❌ NO MOCK DATA
-✅ 100% Real-Time Professional Trading System
+❌ NO FALLBACK PREDICTIONS
+✅ 100% Pure AI Real-Time Professional Trading System
 """
 
 import logging
@@ -66,7 +68,7 @@ logger = StructuredLogger(__name__)
 # CONFIGURATION
 # ====================================================================
 
-VERSION = "10.0"
+VERSION = "10.1"
 APP_NAME = "DEMIR AI PRO ULTRA"
 
 try:
@@ -227,11 +229,11 @@ async def lifespan(app: FastAPI):
     # Start AI Prediction Engine
     if PREDICTION_ENGINE_AVAILABLE:
         try:
-            logger.info("Starting AI Prediction Engine")
+            logger.info("Starting AI Prediction Engine v10.1 (PURE AI)")
             pred_engine = get_prediction_engine()
             await pred_engine.start()
             app_state.services_status['prediction_engine'] = True
-            logger.info("AI Prediction Engine started")
+            logger.info("AI Prediction Engine started (NO FALLBACK)")
         except Exception as e:
             app_state.services_status['prediction_engine'] = False
             logger.error("Prediction Engine failed", error=str(e), traceback=traceback.format_exc())
@@ -292,7 +294,7 @@ async def lifespan(app: FastAPI):
 # APPLICATION INITIALIZATION
 # ====================================================================
 
-app = FastAPI(title=f"{APP_NAME} API", version=VERSION, description="Enterprise AI crypto trading bot with real-time signals, market intelligence, and professional alerts", lifespan=lifespan, docs_url="/api/docs", redoc_url="/api/redoc")
+app = FastAPI(title=f"{APP_NAME} API", version=VERSION, description="Enterprise AI crypto trading bot with PURE AI predictions, real-time signals, market intelligence, and professional alerts", lifespan=lifespan, docs_url="/api/docs", redoc_url="/api/redoc")
 app.state.app_state = app_state
 
 # ====================================================================
@@ -353,9 +355,9 @@ logger.info("API routes included", routers=["api", "dashboard", "professional", 
 
 @app.get("/")
 async def root_ultra_dashboard():
-    """Ultra Professional Trading Terminal v10.0"""
+    """Ultra Professional Trading Terminal v10.1 - 100% Real Data"""
     try:
-        return FileResponse("ui/trading_terminal_ultra.html")
+        return FileResponse("ui/trading_terminal_ultra_v10.html")
     except FileNotFoundError:
         logger.error("Dashboard not found")
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"success": False, "error": "Dashboard not found"})
@@ -383,7 +385,7 @@ if WEBSOCKET_AVAILABLE:
 
 @app.get("/health")
 async def health_check():
-    """Health check with comprehensive system metrics v10.0"""
+    """Health check with comprehensive system metrics v10.1"""
     try:
         uptime_seconds = app_state.get_uptime_seconds()
         health_data = {
@@ -409,7 +411,7 @@ async def health_check():
             try:
                 pred_engine = get_prediction_engine()
                 metrics = pred_engine.get_performance_metrics()
-                health_data["prediction_engine"] = {"running": pred_engine.is_running, "total_predictions": metrics.total_predictions, "successful_predictions": metrics.successful_predictions, "avg_execution_time_ms": metrics.avg_execution_time_ms, "uptime_hours": metrics.uptime_hours}
+                health_data["prediction_engine"] = {"running": pred_engine.is_running, "total_predictions": metrics.total_predictions, "successful_predictions": metrics.successful_predictions, "avg_execution_time_ms": metrics.avg_execution_time_ms, "uptime_hours": metrics.uptime_hours, "models_loaded": metrics.models_loaded}
             except Exception as e:
                 health_data["prediction_engine"] = {"error": str(e)}
         
@@ -473,7 +475,7 @@ if PREDICTION_ENGINE_AVAILABLE:
             pred_engine = get_prediction_engine()
             metrics = pred_engine.get_performance_metrics()
             from api.coin_manager import get_monitored_coins
-            return {"success": True, "data": {"running": pred_engine.is_running, "version": pred_engine.version, "telegram_enabled": pred_engine.telegram_notifier is not None, "monitored_coins": get_monitored_coins(), "performance_metrics": {"total_predictions": metrics.total_predictions, "successful_predictions": metrics.successful_predictions, "success_rate": metrics.successful_predictions / max(metrics.total_predictions, 1), "avg_execution_time_ms": metrics.avg_execution_time_ms, "uptime_hours": metrics.uptime_hours}}, "timestamp": datetime.now(pytz.UTC).isoformat()}
+            return {"success": True, "data": {"running": pred_engine.is_running, "version": pred_engine.version, "telegram_enabled": pred_engine.telegram_notifier is not None, "monitored_coins": get_monitored_coins(), "models_loaded": metrics.models_loaded, "performance_metrics": {"total_predictions": metrics.total_predictions, "successful_predictions": metrics.successful_predictions, "success_rate": metrics.successful_predictions / max(metrics.total_predictions, 1), "avg_execution_time_ms": metrics.avg_execution_time_ms, "uptime_hours": metrics.uptime_hours}}, "timestamp": datetime.now(pytz.UTC).isoformat()}
         except Exception as e:
             logger.error("Prediction status error", error=str(e))
             return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"success": False, "error": str(e)})
