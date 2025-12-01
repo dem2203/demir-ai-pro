@@ -1,8 +1,9 @@
 FROM python:3.11-slim
 
-# DEMIR AI PRO v10.1 - Force Rebuild
-# Build Timestamp: 2025-12-01-23:17:00-UTC
-# Cache Buster: REBUILD_NOW_V10_1
+# DEMIR AI PRO v10.1 ULTRA - FORCE COMPLETE REBUILD
+# Build Timestamp: 2025-12-02-00:08:00-CET
+# Cache Buster: FORCE_REBUILD_V10_1_PURE_AI_NOW
+# Previous builds: INVALIDATED
 
 # Set working directory
 WORKDIR /app
