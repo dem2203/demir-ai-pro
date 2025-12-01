@@ -1,24 +1,17 @@
 #!/usr/bin/env python3
-"""
-DEMIR AI PRO v9.1 - Real-Time AI Prediction Engine PROFESSIONAL
+"""DEMIR AI PRO v10.1 - PURE AI Prediction Engine
 
-Enterprise-grade 24/7 AI prediction system with:
-- LSTM time-series forecasting (REAL TRAINED MODELS)
-- XGBoost gradient boosting (REAL TRAINED MODELS)
-- Random Forest ensemble (REAL TRAINED MODELS)
-- Gradient Boosting classifier (REAL TRAINED MODELS)
-- Weighted ensemble voting
-- Performance metrics tracking
-- Structured logging
-- Circuit breaker resilience
-- Telegram notifications (hourly + strong signals)
-- Dynamic coin monitoring
-- Auto model loading from disk
+Real AI predictions with:
+- LSTM time-series forecasting (TRAINED MODELS ONLY)
+- XGBoost gradient boosting (TRAINED MODELS ONLY)
+- Random Forest ensemble (TRAINED MODELS ONLY)
+- Gradient Boosting classifier (TRAINED MODELS ONLY)
+- NO FALLBACK - Model not ready = explicit message
+- Auto-training on first prediction
 
 ❌ NO MOCK DATA
-❌ NO TODO PLACEHOLDERS
-✅ 100% Real ML Predictions
-✅ Professional AI Standards v9.1
+❌ NO FALLBACK PREDICTIONS
+✅ 100% Pure AI
 """
 
 import logging
@@ -31,60 +24,19 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
-
 import numpy as np
-import numpy.typing as npt
 import pytz
 import joblib
 
-# ====================================================================
-# STRUCTURED LOGGING
-# ====================================================================
-
-class StructuredLogger:
-    """JSON structured logger for production monitoring"""
-    
-    def __init__(self, name: str):
-        self.logger = logging.getLogger(name)
-        self.name = name
-    
-    def _log(self, level: str, message: str, **kwargs: Any) -> None:
-        log_data = {
-            'timestamp': datetime.now(pytz.UTC).isoformat(),
-            'level': level,
-            'logger': self.name,
-            'message': message,
-            **kwargs
-        }
-        getattr(self.logger, level.lower())(json.dumps(log_data))
-    
-    def info(self, message: str, **kwargs: Any) -> None:
-        self._log('INFO', message, **kwargs)
-    
-    def warning(self, message: str, **kwargs: Any) -> None:
-        self._log('WARNING', message, **kwargs)
-    
-    def error(self, message: str, **kwargs: Any) -> None:
-        self._log('ERROR', message, **kwargs)
-    
-    def debug(self, message: str, **kwargs: Any) -> None:
-        self._log('DEBUG', message, **kwargs)
-
-logger = StructuredLogger(__name__)
-
-# ====================================================================
-# DATA MODELS
-# ====================================================================
+logger = logging.getLogger(__name__)
 
 class PredictionDirection(Enum):
-    """Trading direction for predictions"""
     BUY = "BUY"
     SELL = "SELL"
     NEUTRAL = "NEUTRAL"
 
 @dataclass
 class ModelPrediction:
-    """Individual ML model prediction"""
     direction: PredictionDirection
     confidence: float
     probability: float
@@ -93,14 +45,12 @@ class ModelPrediction:
 
 @dataclass
 class EnsemblePrediction:
-    """Ensemble prediction result"""
     direction: PredictionDirection
     confidence: float
     probabilities: Dict[str, float]
 
 @dataclass
 class AIPrediction:
-    """Complete AI prediction with metadata"""
     symbol: str
     timestamp: str
     ensemble_prediction: EnsemblePrediction
@@ -108,10 +58,10 @@ class AIPrediction:
     agreement_score: float
     execution_time_ms: float
     version: str
+    models_ready: bool
 
 @dataclass
 class PerformanceMetrics:
-    """Engine performance tracking"""
     total_predictions: int
     successful_predictions: int
     failed_predictions: int
@@ -120,20 +70,8 @@ class PerformanceMetrics:
     uptime_hours: float
     models_loaded: Dict[str, bool]
 
-# ====================================================================
-# PREDICTION ENGINE
-# ====================================================================
-
 class PredictionEngine:
-    """
-    Professional 24/7 AI prediction engine with:
-    - Multi-model ensemble (LSTM, XGBoost, RF, GB) - REAL TRAINED
-    - Auto model loading
-    - Performance metrics tracking
-    - Circuit breaker resilience
-    - Telegram notifications
-    - Structured logging
-    """
+    """Pure AI prediction engine - NO FALLBACK"""
     
     def __init__(self):
         self.models: Dict[str, Any] = {}
@@ -142,91 +80,56 @@ class PredictionEngine:
         self.last_predictions: Dict[str, AIPrediction] = {}
         self.telegram_notifier: Optional[Any] = None
         self.last_hourly_update: Optional[datetime] = None
-        
-        # Model paths
         self.models_dir = Path("models/saved")
-        
-        # Prediction thresholds
-        self.strong_buy_threshold: float = 0.75  # 75% confidence
+        self.strong_buy_threshold: float = 0.75
         self.strong_sell_threshold: float = 0.75
-        
-        # Performance tracking
         self.start_time: Optional[datetime] = None
         self.total_predictions: int = 0
         self.successful_predictions: int = 0
         self.failed_predictions: int = 0
         self.execution_times: List[float] = []
-        
-        # Configuration
-        self.prediction_interval: int = 300  # 5 minutes
-        self.hourly_update_interval: int = 3600  # 1 hour
-        self.version: str = "9.1"
-        
-        logger.info("PredictionEngine initialized", version=self.version,
-                   prediction_interval_sec=self.prediction_interval,
-                   models_dir=str(self.models_dir))
+        self.prediction_interval: int = 300
+        self.hourly_update_interval: int = 3600
+        self.version: str = "10.1"
+        self.training_started: bool = False
+        logger.info("PredictionEngine initialized (PURE AI)", version=self.version)
     
     async def start(self) -> None:
-        """
-        Start 24/7 prediction engine with background tasks
-        """
         try:
-            logger.info("Starting AI Prediction Engine", version=self.version)
-            
-            # Set start time
+            logger.info("Starting PURE AI Prediction Engine", version=self.version)
             self.start_time = datetime.now(pytz.UTC)
-            
-            # Load ML models
             await self._load_models()
-            
-            # Initialize Telegram
             await self._init_telegram()
             
-            # Start background tasks
+            # If no models loaded, start training immediately
+            if not any(self.models_loaded.values()):
+                logger.warning("No models found - starting immediate training")
+                asyncio.create_task(self._immediate_training())
+            
             self.is_running = True
             asyncio.create_task(self._prediction_loop())
             asyncio.create_task(self._hourly_status_loop())
             asyncio.create_task(self._metrics_reporter_loop())
-            
-            # Start auto-training (weekly)
             asyncio.create_task(self._auto_training_loop())
             
-            logger.info("AI Prediction Engine started", mode="24/7",
-                       tasks=["prediction_loop", "hourly_status", "metrics_reporter", "auto_training"],
-                       models_loaded=self.models_loaded)
-            
+            logger.info("PURE AI Prediction Engine started", models_loaded=self.models_loaded)
         except Exception as e:
-            logger.error("Prediction engine startup failed", error=str(e),
-                        error_type=type(e).__name__)
-            import traceback
-            logger.error("Startup traceback", traceback=traceback.format_exc())
+            logger.error(f"Prediction engine startup failed: {e}")
     
     async def stop(self) -> None:
-        """Stop prediction engine gracefully"""
         logger.info("Stopping AI Prediction Engine")
         self.is_running = False
-        
-        # Log final metrics
         metrics = self.get_performance_metrics()
-        logger.info("Final performance metrics", **asdict(metrics))
-        
-        logger.info("AI Prediction Engine stopped")
+        logger.info("Final performance metrics", extra=asdict(metrics))
     
     async def _load_models(self) -> None:
-        """
-        Load trained ML models from disk
-        Automatically finds latest versions
-        """
         try:
             logger.info("Loading ML models", models_dir=str(self.models_dir))
-            
             if not self.models_dir.exists():
-                logger.warning("Models directory not found - will use fallback predictions",
-                             path=str(self.models_dir))
+                logger.warning("Models directory not found - will train on first prediction")
                 self.models_loaded = {'lstm': False, 'xgboost': False, 'random_forest': False, 'gradient_boosting': False}
                 return
             
-            # Find latest model files for BTCUSDT (default)
             symbol = 'BTCUSDT'
             
             # XGBoost
@@ -235,7 +138,7 @@ class PredictionEngine:
                 latest_xgb = sorted(xgb_files)[-1]
                 self.models['xgboost'] = joblib.load(latest_xgb)
                 self.models_loaded['xgboost'] = True
-                logger.info("XGBoost model loaded", path=str(latest_xgb))
+                logger.info(f"XGBoost loaded: {latest_xgb}")
             else:
                 self.models_loaded['xgboost'] = False
             
@@ -245,7 +148,7 @@ class PredictionEngine:
                 latest_rf = sorted(rf_files)[-1]
                 self.models['random_forest'] = joblib.load(latest_rf)
                 self.models_loaded['random_forest'] = True
-                logger.info("Random Forest model loaded", path=str(latest_rf))
+                logger.info(f"Random Forest loaded: {latest_rf}")
             else:
                 self.models_loaded['random_forest'] = False
             
@@ -255,11 +158,11 @@ class PredictionEngine:
                 latest_gb = sorted(gb_files)[-1]
                 self.models['gradient_boosting'] = joblib.load(latest_gb)
                 self.models_loaded['gradient_boosting'] = True
-                logger.info("Gradient Boosting model loaded", path=str(latest_gb))
+                logger.info(f"Gradient Boosting loaded: {latest_gb}")
             else:
                 self.models_loaded['gradient_boosting'] = False
             
-            # LSTM (requires TensorFlow)
+            # LSTM
             try:
                 from tensorflow import keras
                 lstm_files = list(self.models_dir.glob(f"lstm_{symbol}_*.h5"))
@@ -267,270 +170,117 @@ class PredictionEngine:
                     latest_lstm = sorted(lstm_files)[-1]
                     self.models['lstm'] = keras.models.load_model(latest_lstm)
                     self.models_loaded['lstm'] = True
-                    logger.info("LSTM model loaded", path=str(latest_lstm))
+                    logger.info(f"LSTM loaded: {latest_lstm}")
                 else:
                     self.models_loaded['lstm'] = False
             except ImportError:
-                logger.warning("TensorFlow not available - LSTM model skipped")
+                logger.warning("TensorFlow not available - LSTM skipped")
                 self.models_loaded['lstm'] = False
             
             loaded_count = sum(self.models_loaded.values())
             logger.info(f"ML models loaded: {loaded_count}/4", models=self.models_loaded)
-            
-            if loaded_count == 0:
-                logger.warning("No trained models found - using intelligent fallback predictions")
-            
         except Exception as e:
-            logger.error("Model loading error", error=str(e))
+            logger.error(f"Model loading error: {e}")
             self.models_loaded = {'lstm': False, 'xgboost': False, 'random_forest': False, 'gradient_boosting': False}
     
+    async def _immediate_training(self) -> None:
+        """Start training immediately if no models exist"""
+        if self.training_started:
+            return
+        self.training_started = True
+        
+        try:
+            logger.info("Starting immediate model training...")
+            from core.ai_engine.model_trainer import get_model_trainer
+            trainer = get_model_trainer()
+            await trainer.train_all_models()
+            await self._load_models()
+            logger.info("Immediate training completed - models ready")
+        except Exception as e:
+            logger.error(f"Immediate training failed: {e}")
+    
     async def _init_telegram(self) -> None:
-        """Initialize Telegram bot for notifications"""
         try:
             from integrations.telegram_notifier import TelegramNotifier
-            
             telegram_token = os.getenv('TELEGRAM_TOKEN')
             telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
-            
             if telegram_token and telegram_chat_id:
-                self.telegram_notifier = TelegramNotifier(
-                    token=telegram_token,
-                    chat_id=telegram_chat_id
-                )
-                
-                startup_msg = (
-                    f"🤖 DEMIR AI PRO v{self.version} Started
-"
-                    "✅ 24/7 Prediction Engine Active
-"
-                    "📊 Monitoring: BTCUSDT, ETHUSDT, LTCUSDT
-"
-                    "🔔 Hourly status updates enabled
-"
-                    f"💡 Strong signals: >={self.strong_buy_threshold*100:.0f}% confidence
-"
-                    f"🤖 Models loaded: {sum(self.models_loaded.values())}/4
-"
-                    f"⏰ {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}"
-                )
-                
+                self.telegram_notifier = TelegramNotifier(token=telegram_token, chat_id=telegram_chat_id)
+                startup_msg = f"🧠 PURE AI v{self.version} Started\n✅ Real ML Models Only\n🤖 Models loaded: {sum(self.models_loaded.values())}/4\n⏰ {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}"
                 await self.telegram_notifier.send_message(startup_msg)
-                logger.info("Telegram notifications enabled",
-                           token_length=len(telegram_token),
-                           chat_id=telegram_chat_id)
-            else:
-                logger.warning("Telegram credentials not found",
-                             has_token=bool(telegram_token),
-                             has_chat_id=bool(telegram_chat_id))
-                
+                logger.info("Telegram ready")
         except Exception as e:
-            logger.error("Telegram initialization error", error=str(e))
+            logger.error(f"Telegram init error: {e}")
     
     async def _prediction_loop(self) -> None:
-        """
-        Main 24/7 prediction loop - runs every 5 minutes
-        """
-        logger.info("Starting prediction loop",
-                   interval_sec=self.prediction_interval,
-                   interval_min=self.prediction_interval/60)
-        
+        logger.info("Starting prediction loop")
         while self.is_running:
             try:
-                loop_start = time.time()
-                
-                # Get monitored coins
                 symbols = await self._get_monitored_coins()
-                logger.debug("Processing symbols", count=len(symbols), symbols=symbols)
-                
-                predictions_count = 0
                 for symbol in symbols:
                     prediction = await self.predict(symbol)
-                    
-                    if prediction:
-                        predictions_count += 1
-                        
-                        # Check for strong signals
+                    if prediction and prediction.models_ready:
                         await self._check_and_alert(symbol, prediction)
-                        
-                        # Store prediction
                         self.last_predictions[symbol] = prediction
-                
-                loop_duration = (time.time() - loop_start) * 1000
-                logger.info("Prediction loop completed",
-                           symbols_processed=len(symbols),
-                           predictions_generated=predictions_count,
-                           loop_duration_ms=loop_duration)
-                
-                # Wait for next interval
                 await asyncio.sleep(self.prediction_interval)
-                
             except Exception as e:
-                logger.error("Prediction loop error", error=str(e),
-                           error_type=type(e).__name__)
-                await asyncio.sleep(60)  # Wait 1 min on error
+                logger.error(f"Prediction loop error: {e}")
+                await asyncio.sleep(60)
     
     async def _hourly_status_loop(self) -> None:
-        """
-        Hourly status update - sends BTC/ETH/LTC prices to Telegram
-        """
-        logger.info("Starting hourly status updates")
-        
+        logger.info("Starting hourly status")
         while self.is_running:
             try:
                 now = datetime.now(pytz.UTC)
-                
-                # Calculate seconds until next hour
-                next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
-                seconds_until_next_hour = (next_hour - now).total_seconds()
-                
-                # First run or hourly trigger
-                if self.last_hourly_update is None or seconds_until_next_hour < 60:
+                if self.last_hourly_update is None or (now - self.last_hourly_update).seconds >= 3600:
                     await self._send_hourly_status()
                     self.last_hourly_update = now
-                    
-                    # Wait until next hour + small buffer
-                    await asyncio.sleep(seconds_until_next_hour + 60)
-                else:
-                    # Check every minute
-                    await asyncio.sleep(60)
-                    
+                await asyncio.sleep(60)
             except Exception as e:
-                logger.error("Hourly status loop error", error=str(e))
-                await asyncio.sleep(300)  # Wait 5 min on error
+                logger.error(f"Hourly status error: {e}")
     
     async def _metrics_reporter_loop(self) -> None:
-        """
-        Performance metrics reporter - logs stats every 15 minutes
-        """
-        logger.info("Starting metrics reporter", interval_min=15)
-        
         while self.is_running:
             try:
-                await asyncio.sleep(900)  # 15 minutes
-                
+                await asyncio.sleep(900)
                 metrics = self.get_performance_metrics()
-                logger.info("Performance metrics update", **asdict(metrics))
-                
+                logger.info("Performance metrics", extra=asdict(metrics))
             except Exception as e:
-                logger.error("Metrics reporter error", error=str(e))
+                logger.error(f"Metrics reporter error: {e}")
     
     async def _auto_training_loop(self) -> None:
-        """
-        Auto-training loop - trains models weekly
-        """
-        logger.info("Starting auto-training loop")
-        
-        # Wait 1 hour before first training check
         await asyncio.sleep(3600)
-        
         while self.is_running:
             try:
                 from core.ai_engine.model_trainer import get_model_trainer
-                
                 trainer = get_model_trainer()
-                
-                # Start training if needed
                 if trainer._should_retrain():
-                    logger.info("Starting scheduled model training")
+                    logger.info("Starting scheduled training")
                     await trainer.train_all_models()
-                    
-                    # Reload models
                     await self._load_models()
-                    logger.info("Models reloaded after training")
-                
-                # Check every 6 hours
+                    logger.info("Scheduled training completed")
                 await asyncio.sleep(21600)
-                
             except Exception as e:
-                logger.error("Auto-training loop error", error=str(e))
-                await asyncio.sleep(3600)  # Wait 1 hour on error
-    
-    async def _send_hourly_status(self) -> None:
-        """Send hourly status with BTC/ETH/LTC prices"""
-        try:
-            if not self.telegram_notifier:
-                return
-            
-            # Get current prices for main coins
-            from integrations.binance_client import get_binance_client
-            binance = get_binance_client()
-            
-            btc_price = await binance.get_current_price('BTCUSDT')
-            eth_price = await binance.get_current_price('ETHUSDT')
-            ltc_price = await binance.get_current_price('LTCUSDT')
-            
-            # Get 24h change
-            btc_change = await binance.get_24h_change('BTCUSDT')
-            eth_change = await binance.get_24h_change('ETHUSDT')
-            ltc_change = await binance.get_24h_change('LTCUSDT')
-            
-            # Get performance metrics
-            metrics = self.get_performance_metrics()
-            
-            # Format message
-            message = (
-                "🔔 HOURLY STATUS UPDATE
-
-"
-                f"🔸 BTC: ${btc_price:,.2f} ({btc_change:+.2f}%)
-"
-                f"🔹 ETH: ${eth_price:,.2f} ({eth_change:+.2f}%)
-"
-                f"🟦 LTC: ${ltc_price:,.2f} ({ltc_change:+.2f}%)
-
-"
-                f"🤖 DEMIR AI PRO v{self.version}
-"
-                f"✅ Uptime: {metrics.uptime_hours:.1f}h
-"
-                f"📊 Predictions: {metrics.total_predictions}
-"
-                f"⏱️ Avg Time: {metrics.avg_execution_time_ms:.1f}ms
-"
-                f"🤖 Models: {sum(metrics.models_loaded.values())}/4 loaded
-"
-                f"⏰ {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M UTC')}"
-            )
-            
-            await self.telegram_notifier.send_message(message)
-            logger.info("Hourly status update sent",
-                       btc_price=btc_price, eth_price=eth_price, ltc_price=ltc_price)
-            
-        except Exception as e:
-            logger.error("Hourly status update failed", error=str(e))
-    
-    async def _get_monitored_coins(self) -> List[str]:
-        """
-        Get list of currently monitored coins (default 3 + user-added)
-        """
-        try:
-            from api.coin_manager import get_monitored_coins
-            coins = get_monitored_coins()
-            return coins if coins else ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
-        except Exception as e:
-            logger.warning("Coin manager unavailable, using defaults", error=str(e))
-            return ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
+                logger.error(f"Auto-training error: {e}")
+                await asyncio.sleep(3600)
     
     async def predict(self, symbol: str) -> Optional[AIPrediction]:
-        """
-        Generate AI prediction for symbol using ensemble of models
-        Uses REAL TRAINED MODELS if available
-        """
+        """Generate PURE AI prediction - NO FALLBACK"""
         start_time = time.time()
-        
         try:
             self.total_predictions += 1
             
-            logger.debug("Starting prediction", symbol=symbol,
-                        prediction_number=self.total_predictions)
+            # Check if models ready
+            if not any(self.models_loaded.values()):
+                logger.warning(f"No models ready for {symbol} - training in progress")
+                self.failed_predictions += 1
+                return None
             
             # Get technical analysis
             from core.technical_analysis import TechnicalAnalyzer
             analyzer = TechnicalAnalyzer()
             analysis = analyzer.analyze(symbol)
-            
             if not analysis:
-                logger.warning("No analysis data available", symbol=symbol)
                 self.failed_predictions += 1
                 return None
             
@@ -539,24 +289,28 @@ class PredictionEngine:
             fe = get_feature_engineer()
             features = fe.extract_features(analysis)
             
-            # Get individual model predictions (REAL MODELS)
-            model_start = time.time()
-            predictions: Dict[str, ModelPrediction] = {
-                'lstm': await self._predict_lstm(symbol, features),
-                'xgboost': await self._predict_xgboost(symbol, features),
-                'random_forest': await self._predict_rf(symbol, features),
-                'gradient_boosting': await self._predict_gb(symbol, features)
-            }
-            model_duration = (time.time() - model_start) * 1000
+            # Get predictions from LOADED models only
+            predictions: Dict[str, ModelPrediction] = {}
             
-            # Calculate ensemble
+            if self.models_loaded.get('lstm'):
+                predictions['lstm'] = await self._predict_lstm_pure(symbol, features)
+            if self.models_loaded.get('xgboost'):
+                predictions['xgboost'] = await self._predict_xgboost_pure(symbol, features)
+            if self.models_loaded.get('random_forest'):
+                predictions['random_forest'] = await self._predict_rf_pure(symbol, features)
+            if self.models_loaded.get('gradient_boosting'):
+                predictions['gradient_boosting'] = await self._predict_gb_pure(symbol, features)
+            
+            if not predictions:
+                logger.warning(f"No model predictions available for {symbol}")
+                self.failed_predictions += 1
+                return None
+            
             ensemble = self._calculate_ensemble(predictions)
             agreement = self._calculate_agreement(predictions)
-            
             execution_time_ms = (time.time() - start_time) * 1000
             self.execution_times.append(execution_time_ms)
             
-            # Keep only last 1000 execution times
             if len(self.execution_times) > 1000:
                 self.execution_times = self.execution_times[-1000:]
             
@@ -567,433 +321,179 @@ class PredictionEngine:
                 model_predictions=predictions,
                 agreement_score=agreement,
                 execution_time_ms=execution_time_ms,
-                version=self.version
+                version=self.version,
+                models_ready=True
             )
             
             self.successful_predictions += 1
-            
-            logger.info("Prediction completed", symbol=symbol,
-                       direction=ensemble.direction.value,
-                       confidence=ensemble.confidence,
-                       agreement=agreement,
-                       execution_time_ms=execution_time_ms,
-                       model_execution_time_ms=model_duration,
-                       models_used=sum([p.model_loaded for p in predictions.values()]))
-            
+            logger.info(f"PURE AI prediction for {symbol}", direction=ensemble.direction.value, confidence=ensemble.confidence, models_used=len(predictions))
             return result
-            
         except Exception as e:
             self.failed_predictions += 1
-            logger.error("Prediction error", symbol=symbol, error=str(e),
-                        error_type=type(e).__name__)
+            logger.error(f"Prediction error for {symbol}: {e}")
             return None
     
-    async def _predict_lstm(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
-        """LSTM time-series prediction - REAL MODEL or intelligent fallback"""
+    async def _predict_lstm_pure(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
+        """LSTM prediction - TRAINED MODEL ONLY"""
         start_time = time.time()
-        
-        if self.models_loaded.get('lstm') and 'lstm' in self.models:
-            # USE REAL TRAINED MODEL
-            try:
-                feature_vector = np.array(list(features.values())).reshape(1, 1, -1)
-                prediction_prob = self.models['lstm'].predict(feature_vector, verbose=0)[0][0]
-                
-                if prediction_prob > 0.6:
-                    direction = PredictionDirection.BUY
-                    confidence = float(prediction_prob)
-                elif prediction_prob < 0.4:
-                    direction = PredictionDirection.SELL
-                    confidence = float(1 - prediction_prob)
-                else:
-                    direction = PredictionDirection.NEUTRAL
-                    confidence = 0.5
-                
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ModelPrediction(
-                    direction=direction,
-                    confidence=confidence,
-                    probability=float(prediction_prob),
-                    execution_time_ms=execution_time_ms,
-                    model_loaded=True
-                )
-            except Exception as e:
-                logger.error(f"LSTM prediction error: {e}")
-        
-        # INTELLIGENT FALLBACK (based on real indicators)
-        rsi = features.get('rsi_14', 50)
-        macd_hist = features.get('macd_histogram', 0)
-        
-        if rsi < 30 and macd_hist > 0:
-            direction = PredictionDirection.BUY
-            confidence = 0.72
-            probability = 0.68
-        elif rsi > 70 and macd_hist < 0:
-            direction = PredictionDirection.SELL
-            confidence = 0.69
-            probability = 0.65
-        else:
-            direction = PredictionDirection.NEUTRAL
-            confidence = 0.55
-            probability = 0.50
-        
-        execution_time_ms = (time.time() - start_time) * 1000
-        
-        return ModelPrediction(
-            direction=direction,
-            confidence=confidence,
-            probability=probability,
-            execution_time_ms=execution_time_ms,
-            model_loaded=False
-        )
+        try:
+            feature_vector = np.array(list(features.values())).reshape(1, 1, -1)
+            prediction_prob = self.models['lstm'].predict(feature_vector, verbose=0)[0][0]
+            
+            if prediction_prob > 0.6:
+                direction = PredictionDirection.BUY
+                confidence = float(prediction_prob)
+            elif prediction_prob < 0.4:
+                direction = PredictionDirection.SELL
+                confidence = float(1 - prediction_prob)
+            else:
+                direction = PredictionDirection.NEUTRAL
+                confidence = 0.5
+            
+            execution_time_ms = (time.time() - start_time) * 1000
+            return ModelPrediction(direction=direction, confidence=confidence, probability=float(prediction_prob), execution_time_ms=execution_time_ms, model_loaded=True)
+        except Exception as e:
+            logger.error(f"LSTM prediction error: {e}")
+            raise
     
-    async def _predict_xgboost(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
-        """XGBoost gradient boosting prediction - REAL MODEL or fallback"""
+    async def _predict_xgboost_pure(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
+        """XGBoost prediction - TRAINED MODEL ONLY"""
         start_time = time.time()
-        
-        if self.models_loaded.get('xgboost') and 'xgboost' in self.models:
-            # USE REAL TRAINED MODEL
-            try:
-                feature_vector = np.array(list(features.values())).reshape(1, -1)
-                prediction = self.models['xgboost'].predict(feature_vector)[0]
-                prediction_prob = self.models['xgboost'].predict_proba(feature_vector)[0]
-                
-                if prediction == 1:
-                    direction = PredictionDirection.BUY
-                    confidence = float(prediction_prob[1])
-                else:
-                    direction = PredictionDirection.SELL
-                    confidence = float(prediction_prob[0])
-                
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ModelPrediction(
-                    direction=direction,
-                    confidence=confidence,
-                    probability=float(prediction_prob[1]),
-                    execution_time_ms=execution_time_ms,
-                    model_loaded=True
-                )
-            except Exception as e:
-                logger.error(f"XGBoost prediction error: {e}")
-        
-        # INTELLIGENT FALLBACK
-        volume_ratio = features.get('volume_ratio', 1.0)
-        adx = features.get('adx', 25)
-        
-        if volume_ratio > 1.5 and adx > 25:
-            direction = PredictionDirection.BUY
-            confidence = 0.78
-            probability = 0.75
-        elif volume_ratio < 0.7 and adx > 25:
-            direction = PredictionDirection.SELL
-            confidence = 0.74
-            probability = 0.70
-        else:
-            direction = PredictionDirection.NEUTRAL
-            confidence = 0.60
-            probability = 0.55
-        
-        execution_time_ms = (time.time() - start_time) * 1000
-        
-        return ModelPrediction(
-            direction=direction,
-            confidence=confidence,
-            probability=probability,
-            execution_time_ms=execution_time_ms,
-            model_loaded=False
-        )
+        try:
+            feature_vector = np.array(list(features.values())).reshape(1, -1)
+            prediction = self.models['xgboost'].predict(feature_vector)[0]
+            prediction_prob = self.models['xgboost'].predict_proba(feature_vector)[0]
+            
+            if prediction == 1:
+                direction = PredictionDirection.BUY
+                confidence = float(prediction_prob[1])
+            else:
+                direction = PredictionDirection.SELL
+                confidence = float(prediction_prob[0])
+            
+            execution_time_ms = (time.time() - start_time) * 1000
+            return ModelPrediction(direction=direction, confidence=confidence, probability=float(prediction_prob[1]), execution_time_ms=execution_time_ms, model_loaded=True)
+        except Exception as e:
+            logger.error(f"XGBoost prediction error: {e}")
+            raise
     
-    async def _predict_rf(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
-        """Random Forest prediction - REAL MODEL or fallback"""
+    async def _predict_rf_pure(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
+        """Random Forest prediction - TRAINED MODEL ONLY"""
         start_time = time.time()
-        
-        if self.models_loaded.get('random_forest') and 'random_forest' in self.models:
-            # USE REAL TRAINED MODEL
-            try:
-                feature_vector = np.array(list(features.values())).reshape(1, -1)
-                prediction = self.models['random_forest'].predict(feature_vector)[0]
-                prediction_prob = self.models['random_forest'].predict_proba(feature_vector)[0]
-                
-                if prediction == 1:
-                    direction = PredictionDirection.BUY
-                    confidence = float(prediction_prob[1])
-                else:
-                    direction = PredictionDirection.SELL
-                    confidence = float(prediction_prob[0])
-                
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ModelPrediction(
-                    direction=direction,
-                    confidence=confidence,
-                    probability=float(prediction_prob[1]),
-                    execution_time_ms=execution_time_ms,
-                    model_loaded=True
-                )
-            except Exception as e:
-                logger.error(f"Random Forest prediction error: {e}")
-        
-        # INTELLIGENT FALLBACK
-        bb_position = features.get('bb_position', 0.5)
-        
-        if bb_position < 0.2:
-            direction = PredictionDirection.BUY
-            confidence = 0.69
-            probability = 0.64
-        elif bb_position > 0.8:
-            direction = PredictionDirection.SELL
-            confidence = 0.66
-            probability = 0.61
-        else:
-            direction = PredictionDirection.NEUTRAL
-            confidence = 0.58
-            probability = 0.53
-        
-        execution_time_ms = (time.time() - start_time) * 1000
-        
-        return ModelPrediction(
-            direction=direction,
-            confidence=confidence,
-            probability=probability,
-            execution_time_ms=execution_time_ms,
-            model_loaded=False
-        )
+        try:
+            feature_vector = np.array(list(features.values())).reshape(1, -1)
+            prediction = self.models['random_forest'].predict(feature_vector)[0]
+            prediction_prob = self.models['random_forest'].predict_proba(feature_vector)[0]
+            
+            if prediction == 1:
+                direction = PredictionDirection.BUY
+                confidence = float(prediction_prob[1])
+            else:
+                direction = PredictionDirection.SELL
+                confidence = float(prediction_prob[0])
+            
+            execution_time_ms = (time.time() - start_time) * 1000
+            return ModelPrediction(direction=direction, confidence=confidence, probability=float(prediction_prob[1]), execution_time_ms=execution_time_ms, model_loaded=True)
+        except Exception as e:
+            logger.error(f"Random Forest prediction error: {e}")
+            raise
     
-    async def _predict_gb(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
-        """Gradient Boosting prediction - REAL MODEL or fallback"""
+    async def _predict_gb_pure(self, symbol: str, features: Dict[str, float]) -> ModelPrediction:
+        """Gradient Boosting prediction - TRAINED MODEL ONLY"""
         start_time = time.time()
-        
-        if self.models_loaded.get('gradient_boosting') and 'gradient_boosting' in self.models:
-            # USE REAL TRAINED MODEL
-            try:
-                feature_vector = np.array(list(features.values())).reshape(1, -1)
-                prediction = self.models['gradient_boosting'].predict(feature_vector)[0]
-                prediction_prob = self.models['gradient_boosting'].predict_proba(feature_vector)[0]
-                
-                if prediction == 1:
-                    direction = PredictionDirection.BUY
-                    confidence = float(prediction_prob[1])
-                else:
-                    direction = PredictionDirection.SELL
-                    confidence = float(prediction_prob[0])
-                
-                execution_time_ms = (time.time() - start_time) * 1000
-                return ModelPrediction(
-                    direction=direction,
-                    confidence=confidence,
-                    probability=float(prediction_prob[1]),
-                    execution_time_ms=execution_time_ms,
-                    model_loaded=True
-                )
-            except Exception as e:
-                logger.error(f"Gradient Boosting prediction error: {e}")
-        
-        # INTELLIGENT FALLBACK
-        stoch_k = features.get('stoch_k', 50)
-        cci = features.get('cci', 0)
-        
-        if stoch_k < 20 and cci < -100:
-            direction = PredictionDirection.BUY
-            confidence = 0.65
-            probability = 0.60
-        elif stoch_k > 80 and cci > 100:
-            direction = PredictionDirection.SELL
-            confidence = 0.63
-            probability = 0.58
-        else:
-            direction = PredictionDirection.NEUTRAL
-            confidence = 0.50
-            probability = 0.48
-        
-        execution_time_ms = (time.time() - start_time) * 1000
-        
-        return ModelPrediction(
-            direction=direction,
-            confidence=confidence,
-            probability=probability,
-            execution_time_ms=execution_time_ms,
-            model_loaded=False
-        )
+        try:
+            feature_vector = np.array(list(features.values())).reshape(1, -1)
+            prediction = self.models['gradient_boosting'].predict(feature_vector)[0]
+            prediction_prob = self.models['gradient_boosting'].predict_proba(feature_vector)[0]
+            
+            if prediction == 1:
+                direction = PredictionDirection.BUY
+                confidence = float(prediction_prob[1])
+            else:
+                direction = PredictionDirection.SELL
+                confidence = float(prediction_prob[0])
+            
+            execution_time_ms = (time.time() - start_time) * 1000
+            return ModelPrediction(direction=direction, confidence=confidence, probability=float(prediction_prob[1]), execution_time_ms=execution_time_ms, model_loaded=True)
+        except Exception as e:
+            logger.error(f"Gradient Boosting prediction error: {e}")
+            raise
     
     def _calculate_ensemble(self, predictions: Dict[str, ModelPrediction]) -> EnsemblePrediction:
-        """Weighted ensemble voting with real model priority"""
-        # Adjust weights based on which models are loaded
-        base_weights = {
-            'lstm': 0.30,
-            'xgboost': 0.30,
-            'random_forest': 0.20,
-            'gradient_boosting': 0.20
-        }
+        weights = {'lstm': 0.30, 'xgboost': 0.30, 'random_forest': 0.20, 'gradient_boosting': 0.20}
+        total_weight = sum(weights[k] for k in predictions.keys())
+        weights = {k: weights[k]/total_weight for k in predictions.keys()}
         
-        # Boost weight for loaded models
-        weights = {}
-        total_weight = 0
-        for model_name, prediction in predictions.items():
-            weight = base_weights[model_name]
-            if prediction.model_loaded:
-                weight *= 1.5  # 50% boost for real models
-            weights[model_name] = weight
-            total_weight += weight
-        
-        # Normalize weights
-        weights = {k: v/total_weight for k, v in weights.items()}
-        
-        direction_scores = {
-            'BUY': 0.0,
-            'NEUTRAL': 0.0,
-            'SELL': 0.0
-        }
-        
+        direction_scores = {'BUY': 0.0, 'NEUTRAL': 0.0, 'SELL': 0.0}
         for model_name, prediction in predictions.items():
             weight = weights[model_name]
             direction_key = prediction.direction.value
             direction_scores[direction_key] += weight * prediction.confidence
         
         total = sum(direction_scores.values())
-        if total > 0:
-            probabilities = {k: v/total for k, v in direction_scores.items()}
-        else:
-            probabilities = {'BUY': 0.33, 'NEUTRAL': 0.34, 'SELL': 0.33}
+        probabilities = {k: v/total for k, v in direction_scores.items()} if total > 0 else {'BUY': 0.33, 'NEUTRAL': 0.34, 'SELL': 0.33}
+        final_direction = PredictionDirection(max(probabilities, key=probabilities.get))
+        final_confidence = probabilities[final_direction.value]
         
-        final_direction_str = max(probabilities, key=probabilities.get)
-        final_direction = PredictionDirection(final_direction_str)
-        final_confidence = probabilities[final_direction_str]
-        
-        return EnsemblePrediction(
-            direction=final_direction,
-            confidence=final_confidence,
-            probabilities=probabilities
-        )
+        return EnsemblePrediction(direction=final_direction, confidence=final_confidence, probabilities=probabilities)
     
     def _calculate_agreement(self, predictions: Dict[str, ModelPrediction]) -> float:
-        """Calculate model agreement score (0.0 to 1.0)"""
         directions = [p.direction.value for p in predictions.values()]
         if not directions:
             return 0.0
-        
         from collections import Counter
         counts = Counter(directions)
         most_common_count = counts.most_common(1)[0][1]
-        
         return most_common_count / len(directions)
     
     async def _check_and_alert(self, symbol: str, prediction: AIPrediction) -> None:
-        """
-        Check for strong signals and send Telegram alerts
-        """
         try:
             if not self.telegram_notifier:
                 return
-            
             ensemble = prediction.ensemble_prediction
-            direction = ensemble.direction
-            confidence = ensemble.confidence
-            agreement = prediction.agreement_score
-            
-            # Count loaded models
-            loaded_models = sum([p.model_loaded for p in prediction.model_predictions.values()])
-            
-            # Strong BUY signal
-            if direction == PredictionDirection.BUY and confidence >= self.strong_buy_threshold:
-                message = (
-                    f"🚀 STRONG BUY SIGNAL
-
-"
-                    f"📊 Symbol: {symbol}
-"
-                    f"💪 Confidence: {confidence*100:.1f}%
-"
-                    f"🤝 Agreement: {agreement*100:.0f}%
-"
-                    f"🤖 Ensemble: BUY
-"
-                    f"🎯 Real Models: {loaded_models}/4
-
-"
-                    f"Model Votes:
-"
-                )
-                
-                for model_name, model_pred in prediction.model_predictions.items():
-                    status = "✅" if model_pred.model_loaded else "💡"
-                    message += f"  {status} {model_name}: {model_pred.direction.value} ({model_pred.confidence:.2f})
-"
-                
-                message += f"
-⏰ {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}"
-                
-                await self.telegram_notifier.send_message(message)
-                logger.info("STRONG BUY alert sent", symbol=symbol,
-                           confidence=confidence, agreement=agreement, loaded_models=loaded_models)
-            
-            # Strong SELL signal
-            elif direction == PredictionDirection.SELL and confidence >= self.strong_sell_threshold:
-                message = (
-                    f"⚠️ STRONG SELL SIGNAL
-
-"
-                    f"📊 Symbol: {symbol}
-"
-                    f"💪 Confidence: {confidence*100:.1f}%
-"
-                    f"🤝 Agreement: {agreement*100:.0f}%
-"
-                    f"🤖 Ensemble: SELL
-"
-                    f"🎯 Real Models: {loaded_models}/4
-
-"
-                    f"Model Votes:
-"
-                )
-                
-                for model_name, model_pred in prediction.model_predictions.items():
-                    status = "✅" if model_pred.model_loaded else "💡"
-                    message += f"  {status} {model_name}: {model_pred.direction.value} ({model_pred.confidence:.2f})
-"
-                
-                message += f"
-⏰ {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}"
-                
-                await self.telegram_notifier.send_message(message)
-                logger.info("STRONG SELL alert sent", symbol=symbol,
-                           confidence=confidence, agreement=agreement, loaded_models=loaded_models)
-                
+            if (ensemble.direction == PredictionDirection.BUY and ensemble.confidence >= self.strong_buy_threshold) or \
+               (ensemble.direction == PredictionDirection.SELL and ensemble.confidence >= self.strong_sell_threshold):
+                # Send alert via telegram_ultra if available
+                pass
         except Exception as e:
-            logger.error("Telegram alert error", symbol=symbol, error=str(e))
+            logger.error(f"Alert error: {e}")
+    
+    async def _send_hourly_status(self) -> None:
+        try:
+            if not self.telegram_notifier:
+                return
+            from integrations.binance_client import get_binance_client
+            binance = get_binance_client()
+            btc_price = await binance.get_current_price('BTCUSDT')
+            eth_price = await binance.get_current_price('ETHUSDT')
+            ltc_price = await binance.get_current_price('LTCUSDT')
+            metrics = self.get_performance_metrics()
+            message = f"🔔 HOURLY STATUS\n\n🔸 BTC: ${btc_price:,.2f}\n🔹 ETH: ${eth_price:,.2f}\n🟦 LTC: ${ltc_price:,.2f}\n\n🧠 PURE AI v{self.version}\n✅ Models: {sum(metrics.models_loaded.values())}/4\n📊 Predictions: {metrics.total_predictions}\n⏱️ Avg: {metrics.avg_execution_time_ms:.1f}ms\n⏰ {datetime.now(pytz.UTC).strftime('%H:%M UTC')}"
+            await self.telegram_notifier.send_message(message)
+        except Exception as e:
+            logger.error(f"Hourly status error: {e}")
+    
+    async def _get_monitored_coins(self) -> List[str]:
+        try:
+            from api.coin_manager import get_monitored_coins
+            return get_monitored_coins() or ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
+        except:
+            return ['BTCUSDT', 'ETHUSDT', 'LTCUSDT']
     
     def get_performance_metrics(self) -> PerformanceMetrics:
-        """Get current performance metrics"""
         uptime_hours = 0.0
         if self.start_time:
-            uptime_seconds = (datetime.now(pytz.UTC) - self.start_time).total_seconds()
-            uptime_hours = uptime_seconds / 3600
-        
-        avg_exec_time = 0.0
-        if self.execution_times:
-            avg_exec_time = float(np.mean(self.execution_times))
-        
+            uptime_hours = (datetime.now(pytz.UTC) - self.start_time).total_seconds() / 3600
+        avg_exec_time = float(np.mean(self.execution_times)) if self.execution_times else 0.0
         last_pred_time = None
         if self.last_predictions:
             last_symbol = list(self.last_predictions.keys())[-1]
             last_pred_time = self.last_predictions[last_symbol].timestamp
-        
-        return PerformanceMetrics(
-            total_predictions=self.total_predictions,
-            successful_predictions=self.successful_predictions,
-            failed_predictions=self.failed_predictions,
-            avg_execution_time_ms=avg_exec_time,
-            last_prediction_time=last_pred_time,
-            uptime_hours=uptime_hours,
-            models_loaded=self.models_loaded
-        )
-
-# ====================================================================
-# SINGLETON INSTANCE
-# ====================================================================
+        return PerformanceMetrics(total_predictions=self.total_predictions, successful_predictions=self.successful_predictions, failed_predictions=self.failed_predictions, avg_execution_time_ms=avg_exec_time, last_prediction_time=last_pred_time, uptime_hours=uptime_hours, models_loaded=self.models_loaded)
 
 _prediction_engine: Optional[PredictionEngine] = None
 
 def get_prediction_engine() -> PredictionEngine:
-    """Get singleton PredictionEngine instance"""
     global _prediction_engine
     if _prediction_engine is None:
         _prediction_engine = PredictionEngine()
