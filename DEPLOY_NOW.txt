@@ -1,0 +1,14 @@
+FORCE RAILWAY REDEPLOY
+======================
+
+Timestamp: 2025-12-01 22:01:00 UTC
+Version: 10.1 ULTRA PURE AI
+
+Changes:
+- Pure AI prediction engine (NO FALLBACK)
+- Ultra Dashboard v10.1 (100% real data)
+- Fixed all module imports
+- Enhanced main.py v10.1
+- New endpoints and APIs
+
+Deploy immediately!
