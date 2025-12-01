@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEMIR AI PRO v10.1 ULTRA - Real-Time Trading Terminal</title>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #12161f;
+            --bg-tertiary: #1a1f2e;
+            --border-color: #2a2f3f;
+            --text-primary: #f0f2f5;
+            --text-secondary: #c9d1d9;
+            --text-muted: #8b92a0;
+            --accent-primary: #3b82f6;
+            --accent-success: #10b981;
+            --accent-danger: #ef4444;
+            --accent-warning: #f59e0b;
+            --gradient-ai: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.4);
+            --shadow-glow-green: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+        
+        .terminal-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr 380px;
+            grid-template-rows: 64px 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+        
+        .terminal-header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+        
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .logo-container { display: flex; align-items: center; gap: 12px; }
+        
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--gradient-ai);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: var(--shadow-glow-blue);
+        }
+        
+        .logo-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        
+        .logo-subtitle {
+            font-size: 10px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        
+        .live-indicator {
+            background: var(--accent-danger);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            animation: pulse 2s infinite;
+        }
+        
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+        }
+        
+        .header-right { display: flex; gap: 16px; align-items: center; }
+        
+        .header-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .header-btn:hover {
+            background: var(--bg-primary);
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+        
+        .status-item { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+        .status-label { color: var(--text-secondary); font-weight: 600; }
+        
+        .status-value {
+            color: var(--text-primary);
+            font-weight: 700;
+            padding: 3px 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+        
+        .status-value.success {
+            color: var(--accent-success);
+            background: rgba(16, 185, 129, 0.15);
+        }
+        
+        .status-value.danger {
+            color: var(--accent-danger);
+            background: rgba(239, 68, 68, 0.15);
+        }
+        
+        .ai-brain-panel, .market-center-panel, .ai-signals-panel {
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .ai-brain-panel { background: var(--bg-secondary); border-right: 1px solid var(--border-color); }
+        .market-center-panel { background: var(--bg-primary); }
+        .ai-signals-panel { background: var(--bg-secondary); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .ultra-badge {
+            background: var(--gradient-ai);
+            color: white;
+            font-size: 9px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 800;
+        }
+        
+        .brain-activity-container {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .model-activity-item { margin-bottom: 12px; }
+        
+        .model-activity-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 11px;
+        }
+        
+        .model-name { color: var(--text-secondary); font-weight: 700; }
+        .model-percentage { color: var(--text-primary); font-weight: 800; }
+        
+        .model-activity-bar {
+            height: 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .model-activity-fill {
+            height: 100%;
+            background: var(--gradient-ai);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .model-activity-fill.not-loaded {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        }
+        
+        .ensemble-confidence {
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            text-align: center;
+        }
+        
+        .ensemble-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-success);
+        }
+        
+        .coins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .coin-card-mini {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .coin-card-mini:hover { border-color: var(--accent-primary); transform: translateY(-2px); }
+        
+        .coin-card-mini.active {
+            border-color: var(--accent-success);
+            background: var(--bg-tertiary);
+            box-shadow: var(--shadow-glow-green);
+        }
+        
+        .coin-symbol { font-size: 14px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+        .coin-price { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+        
+        .coin-change {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .coin-change.up { color: var(--accent-success); background: rgba(16, 185, 129, 0.2); }
+        .coin-change.down { color: var(--accent-danger); background: rgba(239, 68, 68, 0.2); }
+        
+        .signals-content { flex: 1; overflow-y: auto; }
+        
+        .signal-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .signal-direction {
+            font-size: 14px;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 6px;
+        }
+        
+        .signal-direction.buy { color: var(--accent-success); background: rgba(16, 185, 129, 0.2); }
+        .signal-direction.sell { color: var(--accent-danger); background: rgba(239, 68, 68, 0.2); }
+        .signal-direction.neutral { color: var(--accent-warning); background: rgba(245, 158, 11, 0.2); }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="terminal-grid">
+        <header class="terminal-header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <div class="logo-icon">🧠</div>
+                    <div>
+                        <div class="logo-title">DEMIR AI PRO</div>
+                        <div class="logo-subtitle">ULTRA REAL-TIME v10.1 ✨</div>
+                    </div>
+                </div>
+                <div class="live-indicator"><div class="live-dot"></div>LIVE DATA</div>
+            </div>
+            <div class="header-right">
+                <div class="status-item">
+                    <span class="status-label">AI:</span>
+                    <span class="status-value" id="aiStatus">Loading...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Models:</span>
+                    <span class="status-value" id="modelsLoaded">0/4</span>
+                </div>
+            </div>
+        </header>
+        
+        <div class="ai-brain-panel">
+            <div class="panel-header">
+                <div class="panel-title"><span>🧠</span> AI BRAIN</div>
+                <div class="ultra-badge">REAL AI</div>
+            </div>
+            
+            <div class="brain-activity-container">
+                <div style="font-size: 12px; font-weight: 700; margin-bottom: 12px;">⚡ Model Status</div>
+                <div class="model-activity-item">
+                    <div class="model-activity-label">
+                        <span class="model-name">LSTM</span>
+                        <span class="model-percentage" id="lstm-status">Loading...</span>
+                    </div>
+                    <div class="model-activity-bar"><div class="model-activity-fill" id="lstm-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="model-activity-item">
+                    <div class="model-activity-label">
+                        <span class="model-name">XGBoost</span>
+                        <span class="model-percentage" id="xgb-status">Loading...</span>
+                    </div>
+                    <div class="model-activity-bar"><div class="model-activity-fill" id="xgb-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="model-activity-item">
+                    <div class="model-activity-label">
+                        <span class="model-name">Random Forest</span>
+                        <span class="model-percentage" id="rf-status">Loading...</span>
+                    </div>
+                    <div class="model-activity-bar"><div class="model-activity-fill" id="rf-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="model-activity-item">
+                    <div class="model-activity-label">
+                        <span class="model-name">Gradient Boosting</span>
+                        <span class="model-percentage" id="gb-status">Loading...</span>
+                    </div>
+                    <div class="model-activity-bar"><div class="model-activity-fill" id="gb-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="ensemble-confidence">
+                    <div style="font-size: 10px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">🎯 ENSEMBLE</div>
+                    <div class="ensemble-value" id="ensembleConf">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="market-center-panel">
+            <div class="panel-header">
+                <div class="panel-title"><span>📊</span> <span id="selectedCoinTitle">MARKET</span></div>
+            </div>
+            
+            <div class="coins-grid" id="coinsGrid">
+                <div class="coin-card-mini active" data-symbol="BTCUSDT" onclick="selectCoin('BTCUSDT')">
+                    <div class="coin-symbol">BTC/USDT</div>
+                    <div class="coin-price" id="price-BTCUSDT">Loading...</div>
+                    <div class="coin-change" id="change-BTCUSDT">--</div>
+                </div>
+                <div class="coin-card-mini" data-symbol="ETHUSDT" onclick="selectCoin('ETHUSDT')">
+                    <div class="coin-symbol">ETH/USDT</div>
+                    <div class="coin-price" id="price-ETHUSDT">Loading...</div>
+                    <div class="coin-change" id="change-ETHUSDT">--</div>
+                </div>
+                <div class="coin-card-mini" data-symbol="LTCUSDT" onclick="selectCoin('LTCUSDT')">
+                    <div class="coin-symbol">LTC/USDT</div>
+                    <div class="coin-price" id="price-LTCUSDT">Loading...</div>
+                    <div class="coin-change" id="change-LTCUSDT">--</div>
+                </div>
+            </div>
+            
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;" id="marketIntelPanel">
+                <div style="font-size: 13px; font-weight: 700; margin-bottom: 16px;">
+                    📊 Market Intelligence
+                </div>
+                <div id="marketIntelContent" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                    Select a coin to view market intelligence
+                </div>
+            </div>
+        </div>
+        
+        <div class="ai-signals-panel">
+            <div class="signals-content">
+                <div class="panel-header">
+                    <div class="panel-title"><span>🎲</span> AI PREDICTIONS</div>
+                </div>
+                
+                <div id="signalsContainer">
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <div style="font-size: 40px; margin-bottom: 12px;">🧠</div>
+                        <div style="font-size: 13px; font-weight: 700;">AI is analyzing...</div>
+                        <div style="font-size: 11px; margin-top: 4px;">Predictions loading</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        console.log('🚀 DEMIR AI PRO v10.1 ULTRA - REAL DATA');
+        
+        let selectedCoin = 'BTCUSDT';
+        const API_BASE = window.location.origin;
+        
+        // Fetch AI Status
+        async function updateAIStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/ai/status`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const status = data.data;
+                    document.getElementById('aiStatus').textContent = status.is_running ? 'ACTIVE' : 'STOPPED';
+                    document.getElementById('aiStatus').className = status.is_running ? 'status-value success' : 'status-value danger';
+                    
+                    // Update model status
+                    const models = status.models_loaded || {};
+                    let loadedCount = 0;
+                    
+                    ['lstm', 'xgboost', 'random_forest', 'gradient_boosting'].forEach(model => {
+                        const key = model === 'random_forest' ? 'rf' : (model === 'gradient_boosting' ? 'gb' : model);
+                        const isLoaded = models[model] === true;
+                        if (isLoaded) loadedCount++;
+                        
+                        const statusEl = document.getElementById(`${key}-status`);
+                        const barEl = document.getElementById(`${key}-bar`);
+                        
+                        if (statusEl && barEl) {
+                            statusEl.textContent = isLoaded ? 'LOADED' : 'Training...';
+                            barEl.style.width = isLoaded ? '100%' : '0%';
+                            barEl.className = isLoaded ? 'model-activity-fill' : 'model-activity-fill not-loaded';
+                        }
+                    });
+                    
+                    document.getElementById('modelsLoaded').textContent = `${loadedCount}/4`;
+                    
+                    // Update ensemble
+                    if (status.performance_metrics) {
+                        const metrics = status.performance_metrics;
+                        if (metrics.successful_predictions > 0) {
+                            const successRate = (metrics.successful_predictions / metrics.total_predictions) * 100;
+                            document.getElementById('ensembleConf').textContent = `${successRate.toFixed(1)}%`;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('AI status error:', error);
+                document.getElementById('aiStatus').textContent = 'ERROR';
+                document.getElementById('aiStatus').className = 'status-value danger';
+            }
+        }
+        
+        // Fetch Prices
+        async function updatePrices() {
+            try {
+                const response = await fetch(`${API_BASE}/api/prices/all`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    Object.entries(data.data).forEach(([symbol, priceData]) => {
+                        const priceEl = document.getElementById(`price-${symbol}`);
+                        const changeEl = document.getElementById(`change-${symbol}`);
+                        
+                        if (priceEl && priceData.price) {
+                            priceEl.textContent = `$${parseFloat(priceData.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        }
+                        
+                        if (changeEl && priceData.change_24h !== undefined) {
+                            const change = parseFloat(priceData.change_24h);
+                            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                            changeEl.className = change >= 0 ? 'coin-change up' : 'coin-change down';
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Prices error:', error);
+            }
+        }
+        
+        // Fetch Signals
+        async function updateSignals() {
+            try {
+                const symbols = ['BTCUSDT', 'ETHUSDT', 'LTCUSDT'];
+                const container = document.getElementById('signalsContainer');
+                container.innerHTML = '';
+                
+                for (const symbol of symbols) {
+                    const response = await fetch(`${API_BASE}/api/signals/${symbol}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.data) {
+                        const signal = data.data;
+                        const card = createSignalCard(signal);
+                        container.appendChild(card);
+                    }
+                }
+            } catch (error) {
+                console.error('Signals error:', error);
+            }
+        }
+        
+        function createSignalCard(signal) {
+            const card = document.createElement('div');
+            card.className = 'signal-card';
+            
+            const directionClass = signal.signal_type?.includes('BUY') ? 'buy' : (signal.signal_type?.includes('SELL') ? 'sell' : 'neutral');
+            const directionIcon = signal.signal_type?.includes('BUY') ? '↗' : (signal.signal_type?.includes('SELL') ? '↘' : '➡');
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <div style="font-size: 13px; font-weight: 700;">${signal.symbol}</div>
+                    <div class="signal-direction ${directionClass}">${directionIcon} ${signal.signal_type || 'NEUTRAL'}</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="background: var(--bg-primary); padding: 8px; border-radius: 6px;">
+                        <div style="font-size: 9px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">CONFIDENCE</div>
+                        <div style="font-size: 14px; font-weight: 800;">${signal.confidence ? (signal.confidence * 100).toFixed(1) : '--'}%</div>
+                    </div>
+                    <div style="background: var(--bg-primary); padding: 8px; border-radius: 6px;">
+                        <div style="font-size: 9px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">PRIORITY</div>
+                        <div style="font-size: 14px; font-weight: 800;">${signal.priority || '--'}</div>
+                    </div>
+                </div>
+                ${signal.entry_price ? `
+                <div style="margin-top: 8px; padding: 8px; background: var(--bg-primary); border-radius: 6px; font-size: 10px;">
+                    <div><strong>Entry:</strong> $${signal.entry_price.toFixed(2)}</div>
+                    <div><strong>Target:</strong> $${signal.target_price?.toFixed(2) || '--'}</div>
+                    <div><strong>Stop:</strong> $${signal.stop_loss?.toFixed(2) || '--'}</div>
+                </div>
+                ` : ''}
+            `;
+            
+            return card;
+        }
+        
+        // Fetch Market Intelligence
+        async function updateMarketIntel(symbol) {
+            try {
+                const response = await fetch(`${API_BASE}/api/signals/market-intelligence/${symbol}`);
+                const data = await response.json();
+                
+                const container = document.getElementById('marketIntelContent');
+                
+                if (data.success && data.data) {
+                    const intel = data.data;
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: left;">
+                            <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 9px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">BUY PRESSURE</div>
+                                <div style="font-size: 18px; font-weight: 800;">${intel.market_depth?.buy_pressure ? (intel.market_depth.buy_pressure * 100).toFixed(1) : '--'}%</div>
+                            </div>
+                            <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 9px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">LIQUIDITY</div>
+                                <div style="font-size: 18px; font-weight: 800;">${intel.market_depth?.liquidity_score ? intel.market_depth.liquidity_score.toFixed(1) : '--'}/100</div>
+                            </div>
+                            <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 9px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">SENTIMENT</div>
+                                <div style="font-size: 18px; font-weight: 800;">${intel.sentiment?.sentiment_score ? (intel.sentiment.sentiment_score * 100).toFixed(1) : '--'}%</div>
+                            </div>
+                            <div style="background: var(--bg-primary); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 9px; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">WHALES</div>
+                                <div style="font-size: 18px; font-weight: 800;">${intel.whale_activity?.detected_whales || 0}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No data available</div>';
+                }
+            } catch (error) {
+                console.error('Market intel error:', error);
+            }
+        }
+        
+        function selectCoin(symbol) {
+            selectedCoin = symbol;
+            document.querySelectorAll('.coin-card-mini').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[data-symbol="${symbol}"]`).classList.add('active');
+            
+            const name = symbol.replace('USDT', '');
+            document.getElementById('selectedCoinTitle').textContent = `MARKET - ${name}`;
+            
+            updateMarketIntel(symbol);
+        }
+        
+        // Auto refresh
+        function startAutoRefresh() {
+            updateAIStatus();
+            updatePrices();
+            updateSignals();
+            updateMarketIntel(selectedCoin);
+            
+            setInterval(updateAIStatus, 10000); // 10s
+            setInterval(updatePrices, 5000); // 5s
+            setInterval(updateSignals, 30000); // 30s
+            setInterval(() => updateMarketIntel(selectedCoin), 30000); // 30s
+        }
+        
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('✅ Starting real-time updates...');
+            startAutoRefresh();
+        });
+        
+        console.log('✅ DEMIR AI PRO v10.1 ULTRA - 100% REAL DATA INITIALIZED');
+    </script>
+</body>
+</html>
