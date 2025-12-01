@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+# DEMIR AI PRO v10.1 - Force Rebuild
+# Build Timestamp: 2025-12-01-23:17:00-UTC
+# Cache Buster: REBUILD_NOW_V10_1
+
 # Set working directory
 WORKDIR /app
 
@@ -20,11 +24,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p models logs
+RUN mkdir -p models logs ui
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV ENVIRONMENT=production
+ENV APP_VERSION=10.1
 
 # Expose port
 EXPOSE 8000
