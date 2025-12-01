@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DEMIR AI PRO v10.0 - Configuration"""
+"""DEMIR AI PRO v10.1 - Configuration"""
 
 import os
 from typing import List
@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Application Info
-VERSION = "10.0"
+VERSION = "10.1"
 APP_NAME = "DEMIR AI PRO ULTRA"
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
 
