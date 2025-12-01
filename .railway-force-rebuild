@@ -1,0 +1,16 @@
+# Force Railway Rebuild
+Timestamp: 2025-12-01T23:40:00Z
+Version: v10.1 PURE AI
+Reason: Deploy real AI prediction engine with trained models
+
+Changes:
+- Pure AI prediction engine (NO FALLBACK)
+- 4 ML models (LSTM, XGBoost, RF, GB)
+- Auto-training on first run
+- Real-time predictions
+- Professional dashboard v10.1
+- Zero mock data
+
+IMPORTANT:
+This file triggers Railway to rebuild from source.
+If you see v7.0 in logs, delete Railway cache and redeploy.
