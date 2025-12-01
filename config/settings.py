@@ -1,5 +1,5 @@
-"""
-🔧 DEMIR AI PRO v9.0 PROFESSIONAL - PRODUCTION CONFIGURATION
+"""  
+🔧 DEMIR AI PRO v10.1 ULTRA - PRODUCTION CONFIGURATION
 
 Enterprise-grade configuration management with strict validation.
 All production parameters must be provided via environment variables.
@@ -11,7 +11,7 @@ All production parameters must be provided via environment variables.
 ✅ 100% Production Environment Variables
 ✅ Validated API Keys
 ✅ Real-Time Data Sources Only
-✅ Professional AI Standards
+✅ Professional AI Standards v10.1
 """
 
 import os
@@ -23,11 +23,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ========================================================================
-# APPLICATION METADATA v9.0 PROFESSIONAL
+# APPLICATION METADATA v10.1 ULTRA
 # ========================================================================
 
-VERSION = os.getenv("VERSION", "9.0.0")
-APP_NAME = "DEMIR AI PRO"
+VERSION = os.getenv("VERSION", "10.1")
+APP_NAME = "DEMIR AI PRO ULTRA"
 FULL_NAME = f"{APP_NAME} v{VERSION}"
 
 # ========================================================================
@@ -42,7 +42,7 @@ if ENVIRONMENT not in ["production", "development"]:
     raise ValueError(f"Invalid ENVIRONMENT: {ENVIRONMENT}. Must be 'production' or 'development'")
 
 # ========================================================================
-# DATABASE CONFIGURATION (OPTIONAL FOR v9.0)
+# DATABASE CONFIGURATION (OPTIONAL FOR v10.1)
 # ========================================================================
 
 def _get_database_url() -> str:
@@ -57,7 +57,7 @@ def _get_database_url() -> str:
     if fallback:
         return fallback
     
-    # v9.0: Database is now OPTIONAL (graceful degradation)
+    # v10.1: Database is now OPTIONAL (graceful degradation)
     print("⚠️  WARNING: No database configured. Running in memory-only mode.")
     return ""  # Empty = no database
 
@@ -218,14 +218,14 @@ LOG_FORMAT = os.getenv("LOG_FORMAT", "json")  # json or text
 HEALTH_CHECK_INTERVAL = int(os.getenv("HEALTH_CHECK_INTERVAL", "60"))  # seconds
 
 # ========================================================================
-# AI/ML CONFIGURATION v9.0
+# AI/ML CONFIGURATION v10.1 PURE AI
 # ========================================================================
 
 ML_MODEL_PATH = os.getenv("ML_MODEL_PATH", "./models")
 ML_RETRAIN_INTERVAL = int(os.getenv("ML_RETRAIN_INTERVAL", "86400"))  # 24 hours in seconds
 ML_MIN_TRAINING_SAMPLES = int(os.getenv("ML_MIN_TRAINING_SAMPLES", "1000"))
 
-# Model ensemble weights
+# Model ensemble weights (PURE AI v10.1)
 ML_ENSEMBLE_WEIGHTS = {
     "lstm": float(os.getenv("ML_WEIGHT_LSTM", "0.30")),
     "xgboost": float(os.getenv("ML_WEIGHT_XGBOOST", "0.25")),
@@ -256,12 +256,12 @@ if not ADVISORY_MODE_ENABLED and not DRY_RUN:
     print("⚠️  WARNING: Live trading enabled! Make sure you know what you're doing.")
 
 # ========================================================================
-# VALIDATION FUNCTION v9.0 (Required for main.py)
+# VALIDATION FUNCTION v10.1 (Required for main.py)
 # ========================================================================
 
 def validate_or_exit() -> bool:
-    """Validate all critical configuration - v9.0 graceful degradation"""
-    # Only Binance API is REQUIRED in v9.0
+    """Validate all critical configuration - v10.1 graceful degradation"""
+    # Only Binance API is REQUIRED in v10.1
     # Database is now optional
     critical_vars = [
         ("BINANCE_API_KEY", BINANCE_API_KEY),
@@ -283,12 +283,12 @@ def validate_or_exit() -> bool:
     return True
 
 # ========================================================================
-# STARTUP BANNER v9.0 PROFESSIONAL
+# STARTUP BANNER v10.1 ULTRA PURE AI
 # ========================================================================
 
 print(f"""
 ┌──────────────────────────────────────────────────────────────┐
-│  ⚡ {FULL_NAME} PROFESSIONAL - CONFIG LOADED                   │
+│  ⚡ {FULL_NAME} REAL-TIME - CONFIG LOADED                │
 └──────────────────────────────────────────────────────────────┘
 
 ✅ Environment: {ENVIRONMENT.upper()}
@@ -300,6 +300,6 @@ print(f"""
 
 ⚠️  Zero Mock Data Policy Active
 ⚠️  Production Validation Enabled
-⚠️  Professional AI Standards v9.0
+⚠️  Professional AI Standards v10.1 PURE AI
 
 """)
