@@ -554,3 +554,13 @@ def get_ta_engine() -> ProfessionalTAEngine:
     if _ta_engine is None:
         _ta_engine = ProfessionalTAEngine()
     return _ta_engine
+
+
+# ============================================================================
+# BACKWARD COMPATIBILITY ALIAS (v10.1)
+# ============================================================================
+
+# Alias for backward compatibility with old imports
+TechnicalAnalyzer = ProfessionalTAEngine
+
+__all__ = ['ProfessionalTAEngine', 'TechnicalAnalyzer', 'get_ta_engine']
