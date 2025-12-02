@@ -1,9 +1,9 @@
 FROM python:3.11-slim
 
-# DEMIR AI PRO v10.1 ULTRA - FORCE COMPLETE REBUILD
-# Build Timestamp: 2025-12-02-00:08:00-CET
-# Cache Buster: FORCE_REBUILD_V10_1_PURE_AI_NOW
-# Previous builds: INVALIDATED
+# DEMIR AI PRO v10.1 ULTRA - PRODUCTION FIX
+# Build Timestamp: 2025-12-02-17:30:00-CET
+# Cache Buster: PRODUCTION_FIX_V10_1_ALL_IMPORTS_RESOLVED
+# Changes: TechnicalAnalyzer alias + get_binance function + error handling
 
 # Set working directory
 WORKDIR /app
