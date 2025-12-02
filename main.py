@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DEMIR AI PRO v10.1 PROFESSIONAL ULTRA - Main Application
+"""DEMIR AI PRO v10.2 PROFESSIONAL ULTRA - Main Application
 
 Enterprise-grade AI trading bot with:
 - PURE AI predictions (NO FALLBACK)
@@ -7,7 +7,7 @@ Enterprise-grade AI trading bot with:
 - Market intelligence (order book, whale detection, sentiment)
 - Advanced ML predictions (LSTM, XGBoost, RF, GB)
 - Professional Telegram alerts (<30 sec latency)
-- Ultra Trading Terminal v10.1 (100% real data)
+- Professional Dashboard v10.2 (127-layer analysis)
 - 24/7 monitoring and alerts
 - WebSocket real-time updates
 - Comprehensive risk management
@@ -68,7 +68,7 @@ logger = StructuredLogger(__name__)
 # CONFIGURATION
 # ====================================================================
 
-VERSION = "10.1"
+VERSION = "10.2"
 APP_NAME = "DEMIR AI PRO ULTRA"
 
 try:
@@ -229,7 +229,7 @@ async def lifespan(app: FastAPI):
     # Start AI Prediction Engine
     if PREDICTION_ENGINE_AVAILABLE:
         try:
-            logger.info("Starting AI Prediction Engine v10.1 (PURE AI)")
+            logger.info("Starting AI Prediction Engine v10.2 (PURE AI)")
             pred_engine = get_prediction_engine()
             await pred_engine.start()
             app_state.services_status['prediction_engine'] = True
@@ -354,18 +354,56 @@ logger.info("API routes included", routers=["api", "dashboard", "professional", 
 # ====================================================================
 
 @app.get("/")
-async def root_ultra_dashboard():
-    """Ultra Professional Trading Terminal v10.1 - 100% Real Data"""
+async def root_professional_dashboard():
+    """Professional Dashboard v10.2 - 127-Layer Multi-Dimensional Analysis"""
+    try:
+        # Try multiple possible paths for Railway deployment
+        from pathlib import Path
+        possible_paths = [
+            Path("ui/professional_dashboard.html"),
+            Path("/app/ui/professional_dashboard.html"),
+            Path("app/ui/professional_dashboard.html")
+        ]
+        
+        dashboard_path = None
+        for path in possible_paths:
+            if path.exists():
+                dashboard_path = path
+                logger.info(f"✅ Found dashboard at: {path}")
+                break
+        
+        if not dashboard_path:
+            logger.error("❌ Professional dashboard HTML not found in any location")
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                content={
+                    "success": False, 
+                    "error": "Dashboard file not found",
+                    "searched_paths": [str(p) for p in possible_paths]
+                }
+            )
+        
+        with open(dashboard_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        
+        logger.info("✅ Professional dashboard loaded successfully")
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content=html_content)
+        
+    except FileNotFoundError:
+        logger.error("Dashboard file not found")
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"success": False, "error": "Dashboard not found"})
+    except Exception as e:
+        logger.error(f"Dashboard error: {e}")
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"success": False, "error": str(e)})
+
+@app.get("/trading-terminal")
+async def trading_terminal_ultra():
+    """Ultra Trading Terminal v10 - Alternative Dashboard"""
     try:
         return FileResponse("ui/trading_terminal_ultra_v10.html")
     except FileNotFoundError:
-        logger.error("Dashboard not found")
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"success": False, "error": "Dashboard not found"})
-
-@app.get("/trading-terminal")
-async def trading_terminal_legacy():
-    """Legacy endpoint - redirects to ultra dashboard"""
-    return RedirectResponse(url="/")
+        return RedirectResponse(url="/")
 
 if WEBSOCKET_AVAILABLE:
     @app.websocket("/ws/dashboard")
@@ -385,7 +423,7 @@ if WEBSOCKET_AVAILABLE:
 
 @app.get("/health")
 async def health_check():
-    """Health check with comprehensive system metrics v10.1"""
+    """Health check with comprehensive system metrics v10.2"""
     try:
         uptime_seconds = app_state.get_uptime_seconds()
         health_data = {
