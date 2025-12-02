@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DEMIR AI PRO v10.0 - Ultra Telegram Notifier
+"""DEMIR AI PRO v11.0 - Ultra Telegram Notifier (FIXED)
 
 Professional Telegram integration with:
 - Real-time signal alerts (<30 sec)
@@ -32,6 +32,14 @@ class TelegramUltra:
         self.last_message_time = {}
         self.rate_limit_seconds = 30  # Min 30 sec between similar messages
         logger.info("Telegram Ultra initialized")
+    
+    async def send_message(self, text: str) -> bool:
+        """Public method to send message - ALIAS for compatibility"""
+        return await self._send_message(text)
+    
+    async def send_text(self, text: str) -> bool:
+        """Send text message - ALIAS"""
+        return await self._send_message(text)
     
     async def send_signal_alert(self, signal) -> bool:
         """Send professional trading signal alert"""
@@ -92,13 +100,13 @@ class TelegramUltra:
             if signal.reasons:
                 message += f"**✅ REASONS:**\n"
                 for reason in signal.reasons:
-                    message += f"\u2022 {reason}\n"
+                    message += f"• {reason}\n"
                 message += "\n"
             
             if signal.warnings:
                 message += f"**⚠️ WARNINGS:**\n"
                 for warning in signal.warnings:
-                    message += f"\u2022 {warning}\n"
+                    message += f"• {warning}\n"
                 message += "\n"
             
             message += f"⏰ {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
