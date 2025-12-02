@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""DEMIR AI PRO v10.5 PROFESSIONAL - Full Production System
+"""DEMIR AI PRO v11.0 FULL AI - Complete Production System
 
 Enterprise-grade AI trading bot with:
-- PURE AI predictions (NO FALLBACK)
-- Real-time WebSocket updates
-- Professional Dashboard with 127-layer analysis
-- Market intelligence and sentiment analysis
-- 24/7 monitoring and alerts
-- Comprehensive risk management
+- 🧠 FULL AI INTEGRATION (LSTM, XGBoost, RF, GB)
+- 🤖 Autonomous Trading Engine with Risk Management
+- 📊 127-Layer Professional Analysis
+- 🔴 Real-time WebSocket Updates
+- 📱 Telegram Ultra Alerts
+- 💾 PostgreSQL Trade Logging
+- 🎯 24/7 Market Monitoring
 
 ❌ NO MOCK DATA
 ❌ NO FALLBACK PREDICTIONS
@@ -73,8 +74,8 @@ logging.basicConfig(
 
 logger = StructuredLogger(__name__)
 
-VERSION = "10.5"
-APP_NAME = "DEMIR AI PRO PROFESSIONAL"
+VERSION = "11.0"
+APP_NAME = "DEMIR AI PRO FULL AI"
 
 # ====================================================================
 # APPLICATION STATE
@@ -106,10 +107,10 @@ app_state = ApplicationState()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ============ STARTUP ============
-    logger.info("Application starting", name=APP_NAME, version=VERSION)
+    logger.info("🚀 DEMIR AI PRO v11.0 FULL AI - STARTING...", name=APP_NAME, version=VERSION)
     app_state.health_status = "initializing"
     
-    # Initialize WebSocket Manager
+    # 1. Initialize WebSocket Manager
     try:
         from api.websocket_manager import get_ws_manager
         ws_manager = get_ws_manager()
@@ -117,51 +118,101 @@ async def lifespan(app: FastAPI):
         
         # Start WebSocket broadcast loop
         asyncio.create_task(ws_manager.start_broadcast_loop(interval=30))
-        logger.info("WebSocket manager started")
+        logger.info("✅ WebSocket Manager started")
     except Exception as e:
         app_state.services_status['websocket'] = False
-        logger.error("WebSocket failed", error=str(e))
+        logger.error("❌ WebSocket failed", error=str(e))
     
-    # Initialize Technical Analysis Engine
+    # 2. Initialize Technical Analysis Engine
     try:
         from core.technical_analysis import get_ta_engine
         ta_engine = get_ta_engine()
         app_state.services_status['technical_analysis'] = True
-        logger.info("Technical Analysis engine ready")
+        logger.info("✅ Technical Analysis Engine (127 layers) ready")
     except Exception as e:
         app_state.services_status['technical_analysis'] = False
-        logger.error("Technical Analysis failed", error=str(e))
+        logger.error("❌ Technical Analysis failed", error=str(e))
     
-    # Initialize Market Intelligence (optional)
+    # 3. 🧠 Initialize AI Prediction Engine (NEW!)
+    try:
+        from core.ai_engine.prediction_engine import get_prediction_engine
+        pred_engine = get_prediction_engine()
+        
+        # Start AI prediction engine
+        await pred_engine.start()
+        
+        app_state.services_status['ai_prediction_engine'] = True
+        logger.info("✅ AI Prediction Engine started", models=["LSTM", "XGBoost", "RandomForest", "GradientBoosting"])
+    except Exception as e:
+        app_state.services_status['ai_prediction_engine'] = False
+        logger.error("❌ AI Prediction Engine failed", error=str(e), trace=traceback.format_exc())
+    
+    # 4. 🤖 Initialize Trading Engine (NEW!)
+    try:
+        from core.trading_engine import get_engine
+        trading_engine = get_engine()
+        
+        # Start trading engine
+        await trading_engine.start()
+        
+        app_state.services_status['trading_engine'] = True
+        logger.info("✅ Trading Engine started", features=["AI signals", "Risk management", "Auto SL/TP"])
+    except Exception as e:
+        app_state.services_status['trading_engine'] = False
+        logger.error("❌ Trading Engine failed", error=str(e), trace=traceback.format_exc())
+    
+    # 5. Initialize Market Intelligence (optional)
     try:
         from core.market_intelligence import get_market_intelligence
         mi = get_market_intelligence()
         await mi.initialize()
         app_state.services_status['market_intelligence'] = True
-        logger.info("Market Intelligence ready")
+        logger.info("✅ Market Intelligence ready")
     except Exception as e:
         app_state.services_status['market_intelligence'] = False
-        logger.warning("Market Intelligence unavailable", error=str(e))
+        logger.warning("⚠️  Market Intelligence unavailable", error=str(e))
     
     app_state.health_status = "healthy"
+    
+    # 🎉 Startup Complete Summary
     logger.info(
-        "Application ready",
+        "🎉 DEMIR AI PRO v11.0 FULL AI - READY!",
         name=APP_NAME,
         version=VERSION,
-        services=app_state.services_status
+        services=app_state.services_status,
+        ai_enabled=app_state.services_status.get('ai_prediction_engine', False),
+        trading_enabled=app_state.services_status.get('trading_engine', False)
     )
     
     yield
     
     # ============ SHUTDOWN ============
-    logger.info("Application shutting down", name=APP_NAME, version=VERSION)
+    logger.info("🛑 DEMIR AI PRO v11.0 - Shutting down...", name=APP_NAME, version=VERSION)
     app_state.health_status = "shutting_down"
     
+    # Stop Trading Engine
+    try:
+        from core.trading_engine import get_engine
+        trading_engine = get_engine()
+        await trading_engine.stop()
+        logger.info("✅ Trading Engine stopped")
+    except Exception as e:
+        logger.error("❌ Trading Engine shutdown error", error=str(e))
+    
+    # Stop AI Prediction Engine
+    try:
+        from core.ai_engine.prediction_engine import get_prediction_engine
+        pred_engine = get_prediction_engine()
+        await pred_engine.stop()
+        logger.info("✅ AI Prediction Engine stopped")
+    except Exception as e:
+        logger.error("❌ AI Prediction Engine shutdown error", error=str(e))
+    
     logger.info(
-        "Shutdown complete",
+        "✅ Shutdown complete",
         requests=app_state.request_count,
         errors=app_state.error_count,
-        uptime=app_state.get_uptime_seconds()
+        uptime_hours=app_state.get_uptime_seconds() / 3600
     )
 
 # ====================================================================
@@ -171,7 +222,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=f"{APP_NAME} API",
     version=VERSION,
-    description="Enterprise AI crypto trading bot with real-time analysis",
+    description="Enterprise AI crypto trading bot with full ML integration",
     lifespan=lifespan
 )
 app.state.app_state = app_state
@@ -252,7 +303,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/")
 async def root_dashboard():
-    """Serve Professional Dashboard - 127-Layer Analysis"""
+    """Serve Professional Dashboard - 127-Layer Analysis + AI"""
     try:
         possible_paths = [
             Path("ui/professional_dashboard.html"),
@@ -292,11 +343,9 @@ async def websocket_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive and handle client messages
             data = await websocket.receive_text()
             logger.debug("WebSocket message received", data=data)
             
-            # Parse client request
             try:
                 request = json.loads(data)
                 if request.get('type') == 'ping':
@@ -313,7 +362,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/api/analyze/{symbol}")
 async def analyze_symbol(symbol: str):
-    """Analyze crypto symbol with 127-layer professional TA"""
+    """Analyze crypto symbol with 127-layer professional TA + AI"""
     try:
         symbol = symbol.upper()
         if not symbol.endswith("USDT"):
@@ -335,6 +384,29 @@ async def analyze_symbol(symbol: str):
                 status_code=404
             )
         
+        # Get AI prediction if available
+        ai_prediction = None
+        try:
+            from core.ai_engine.prediction_engine import get_prediction_engine
+            pred_engine = get_prediction_engine()
+            
+            if symbol in pred_engine.last_predictions:
+                pred = pred_engine.last_predictions[symbol]
+                ai_prediction = {
+                    "direction": pred.ensemble_prediction.direction.value,
+                    "confidence": pred.ensemble_prediction.confidence,
+                    "agreement_score": pred.agreement_score,
+                    "models": {
+                        name: {
+                            "direction": model_pred.direction.value,
+                            "confidence": model_pred.confidence
+                        }
+                        for name, model_pred in pred.model_predictions.items()
+                    }
+                }
+        except Exception as e:
+            logger.warning(f"AI prediction unavailable for {symbol}: {e}")
+        
         return {
             "success": True,
             "symbol": symbol,
@@ -346,12 +418,68 @@ async def analyze_symbol(symbol: str):
                 "ai_commentary": analysis['ai_commentary'],
                 "layer_count": analysis.get('layer_count', 127),
                 "layers": analysis['layers']
-            }
+            },
+            "ai_prediction": ai_prediction
         }
     except Exception as e:
         logger.error(f"❌ Analysis error for {symbol}: {e}")
         return JSONResponse(
             content={"success": False, "error": str(e), "symbol": symbol},
+            status_code=500
+        )
+
+@app.get("/api/ai/predictions")
+async def get_ai_predictions():
+    """Get latest AI predictions for all monitored symbols"""
+    try:
+        from core.ai_engine.prediction_engine import get_prediction_engine
+        from api.coin_manager import get_monitored_coins
+        
+        pred_engine = get_prediction_engine()
+        coins = get_monitored_coins()
+        
+        predictions = {}
+        for symbol in coins:
+            if symbol in pred_engine.last_predictions:
+                pred = pred_engine.last_predictions[symbol]
+                predictions[symbol] = {
+                    "timestamp": pred.timestamp,
+                    "direction": pred.ensemble_prediction.direction.value,
+                    "confidence": pred.ensemble_prediction.confidence,
+                    "agreement_score": pred.agreement_score,
+                    "models_ready": pred.models_ready,
+                    "execution_time_ms": pred.execution_time_ms
+                }
+        
+        return {
+            "success": True,
+            "predictions": predictions,
+            "total_symbols": len(predictions)
+        }
+    except Exception as e:
+        logger.error(f"AI predictions error: {e}")
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=500
+        )
+
+@app.get("/api/trading/status")
+async def get_trading_status():
+    """Get trading engine status"""
+    try:
+        from core.trading_engine import get_engine
+        trading_engine = get_engine()
+        
+        status_data = trading_engine.get_status()
+        
+        return {
+            "success": True,
+            "status": status_data
+        }
+    except Exception as e:
+        logger.error(f"Trading status error: {e}")
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
             status_code=500
         )
 
@@ -393,6 +521,30 @@ async def health_check():
             except:
                 pass
         
+        # Get AI Prediction Engine stats
+        if app_state.services_status.get('ai_prediction_engine'):
+            try:
+                from core.ai_engine.prediction_engine import get_prediction_engine
+                pred_engine = get_prediction_engine()
+                health_data["ai_engine"] = {
+                    "running": pred_engine.is_running,
+                    "models_loaded": pred_engine.models_loaded,
+                    "total_predictions": pred_engine.total_predictions,
+                    "successful_predictions": pred_engine.successful_predictions,
+                    "failed_predictions": pred_engine.failed_predictions
+                }
+            except Exception as e:
+                logger.warning(f"AI engine stats error: {e}")
+        
+        # Get Trading Engine stats
+        if app_state.services_status.get('trading_engine'):
+            try:
+                from core.trading_engine import get_engine
+                trading_engine = get_engine()
+                health_data["trading_engine"] = trading_engine.get_status()
+            except Exception as e:
+                logger.warning(f"Trading engine stats error: {e}")
+        
         return health_data
     except Exception as e:
         logger.error("Health check failed", error=str(e))
@@ -427,6 +579,8 @@ if __name__ == "__main__":
     logger.info(f"📍 Server: {HOST}:{PORT}")
     logger.info(f"🌐 Dashboard: http://{HOST}:{PORT}/")
     logger.info(f"📊 API: http://{HOST}:{PORT}/api/analyze/BTCUSDT")
+    logger.info(f"🧠 AI Predictions: http://{HOST}:{PORT}/api/ai/predictions")
+    logger.info(f"🤖 Trading Status: http://{HOST}:{PORT}/api/trading/status")
     logger.info(f"❤️ Health: http://{HOST}:{PORT}/health")
     logger.info(f"🔌 WebSocket: ws://{HOST}:{PORT}/ws/dashboard")
     
