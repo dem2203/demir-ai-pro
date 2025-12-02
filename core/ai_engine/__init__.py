@@ -1,31 +1,24 @@
-"""
-AI Engine Module v9.1
+"""AI Engine Module v11.0
 
-Multi-layer ML ensemble for trading signal generation.
-
-Real ML Models:
+Production AI prediction engine with:
 - LSTM (Time-series RNN)
 - XGBoost (Gradient boosting)
 - Random Forest (Ensemble trees)
 - Gradient Boosting (Boosted trees)
 
-Features:
-- Real model training (model_trainer)
-- 24/7 prediction engine (prediction_engine)
-- Feature engineering
-- Ensemble voting
+✅ Pure AI predictions
+✅ Real-time 24/7 engine
+✅ Feature engineering
+✅ Ensemble voting
 """
 
-from .ensemble import EnsembleModel
-from .lstm_model import LSTMPredictor
-from .xgboost_model import XGBoostPredictor
-
-# v9.1 NEW: Export prediction engine and model trainer
+# Core exports - prediction engine and model trainer
 try:
     from .prediction_engine import get_prediction_engine, PredictionEngine
     PREDICTION_ENGINE_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     PREDICTION_ENGINE_AVAILABLE = False
+    print(f"Prediction engine import failed: {e}")
 
 try:
     from .model_trainer import get_model_trainer, ModelTrainer
@@ -39,10 +32,14 @@ try:
 except ImportError:
     FEATURE_ENGINEER_AVAILABLE = False
 
+# Optional: Ensemble model if exists
+try:
+    from .ensemble import EnsembleModel
+    ENSEMBLE_AVAILABLE = True
+except ImportError:
+    ENSEMBLE_AVAILABLE = False
+
 __all__ = [
-    'EnsembleModel',
-    'LSTMPredictor',
-    'XGBoostPredictor',
     'get_prediction_engine',
     'PredictionEngine',
     'get_model_trainer',
@@ -53,3 +50,6 @@ __all__ = [
     'MODEL_TRAINER_AVAILABLE',
     'FEATURE_ENGINEER_AVAILABLE'
 ]
+
+if ENSEMBLE_AVAILABLE:
+    __all__.append('EnsembleModel')
