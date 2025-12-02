@@ -21,6 +21,19 @@ except ImportError as e:
     TradingEngine = None
     get_engine = None
 
+# Technical Analysis Engine with backward compatibility
+try:
+    from .technical_analysis import ProfessionalTAEngine, get_ta_engine
+    # Alias for backward compatibility
+    TechnicalAnalyzer = ProfessionalTAEngine
+    TECHNICAL_ANALYSIS_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Technical analysis import failed: {e}")
+    TECHNICAL_ANALYSIS_AVAILABLE = False
+    TechnicalAnalyzer = None
+    ProfessionalTAEngine = None
+    get_ta_engine = None
+
 # Optional AI modules (graceful degradation)
 try:
     from .ai_engine import AIEngine
@@ -49,5 +62,9 @@ __all__ = [
     'DataPipeline',
     'TradingEngine',
     'get_engine',
+    'TechnicalAnalyzer',
+    'ProfessionalTAEngine',
+    'get_ta_engine',
     'TRADING_ENGINE_AVAILABLE',
+    'TECHNICAL_ANALYSIS_AVAILABLE',
 ]
