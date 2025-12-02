@@ -5,7 +5,7 @@ Simple wrapper around Binance Client for trading engine use.
 Provides ticker data and OHLCV klines for technical analysis.
 
 Author: DEMIR AI PRO
-Version: 8.0
+Version: 10.1
 """
 
 import logging
@@ -62,12 +62,7 @@ class BinanceIntegration:
             logger.error(f"❌ Ticker fetch error for {symbol}: {e}")
             return None
     
-    def get_klines(
-        self, 
-        symbol: str, 
-        interval: str = "15m", 
-        limit: int = 500
-    ) -> Optional[List[List]]:
+    def get_klines(self, symbol: str, interval: str = "15m", limit: int = 500) -> Optional[List[List]]:
         """
         Get historical klines/candlestick data
         
@@ -78,20 +73,6 @@ class BinanceIntegration:
             
         Returns:
             List of klines data or None
-            Each kline: [
-                Open time,
-                Open,
-                High,
-                Low,
-                Close,
-                Volume,
-                Close time,
-                Quote asset volume,
-                Number of trades,
-                Taker buy base asset volume,
-                Taker buy quote asset volume,
-                Ignore
-            ]
         """
         try:
             if self.client and hasattr(self.client, 'get_klines'):
@@ -103,10 +84,38 @@ class BinanceIntegration:
             logger.error(f"❌ Klines fetch error for {symbol}: {e}")
             return None
     
+    def get_order_book(self, symbol: str, limit: int = 100) -> Optional[Dict[str, Any]]:
+        """Get order book depth"""
+        try:
+            if self.client and hasattr(self.client, 'get_order_book'):
+                return self.client.get_order_book(symbol, limit)
+            else:
+                return self._fetch_order_book_direct(symbol, limit)
+        except Exception as e:
+            logger.error(f"❌ Order book fetch error: {e}")
+            return None
+    
+    def get_24h_stats(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Get 24h ticker statistics"""
+        try:
+            return self.get_ticker(symbol)
+        except Exception as e:
+            logger.error(f"❌ 24h stats error: {e}")
+            return None
+    
+    def get_recent_trades(self, symbol: str, limit: int = 100) -> Optional[List[Dict]]:
+        """Get recent trades"""
+        try:
+            if self.client and hasattr(self.client, 'get_recent_trades'):
+                return self.client.get_recent_trades(symbol, limit)
+            else:
+                return self._fetch_trades_direct(symbol, limit)
+        except Exception as e:
+            logger.error(f"❌ Recent trades error: {e}")
+            return None
+    
     def _fetch_ticker_direct(self, symbol: str) -> Optional[Dict[str, Any]]:
-        """
-        Direct API call using requests
-        """
+        """Direct API call using requests"""
         try:
             import requests
             url = f"{self.base_url}/api/v3/ticker/24hr?symbol={symbol}"
@@ -124,37 +133,14 @@ class BinanceIntegration:
             logger.error(f"❌ Direct ticker fetch failed: {e}")
             return None
     
-    def _fetch_klines_direct(
-        self, 
-        symbol: str, 
-        interval: str, 
-        limit: int
-    ) -> Optional[List[List]]:
-        """
-        Direct klines API call using requests
-        
-        Args:
-            symbol: Trading pair
-            interval: Timeframe interval
-            limit: Number of candles
-            
-        Returns:
-            List of klines or None
-        """
+    def _fetch_klines_direct(self, symbol: str, interval: str, limit: int) -> Optional[List[List]]:
+        """Direct klines API call using requests"""
         try:
             import requests
-            
-            # Binance klines endpoint
             url = f"{self.base_url}/api/v3/klines"
-            
-            params = {
-                'symbol': symbol,
-                'interval': interval,
-                'limit': min(limit, 1000)  # Max 1000 per request
-            }
+            params = {'symbol': symbol, 'interval': interval, 'limit': min(limit, 1000)}
             
             logger.info(f"🔍 Fetching {limit} klines for {symbol} ({interval})...")
-            
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
@@ -167,6 +153,47 @@ class BinanceIntegration:
                 
         except Exception as e:
             logger.error(f"❌ Direct klines fetch failed for {symbol}: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
             return None
+    
+    def _fetch_order_book_direct(self, symbol: str, limit: int) -> Optional[Dict[str, Any]]:
+        """Direct order book fetch"""
+        try:
+            import requests
+            url = f"{self.base_url}/api/v3/depth"
+            params = {'symbol': symbol, 'limit': limit}
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            logger.error(f"❌ Order book fetch failed: {e}")
+            return None
+    
+    def _fetch_trades_direct(self, symbol: str, limit: int) -> Optional[List[Dict]]:
+        """Direct recent trades fetch"""
+        try:
+            import requests
+            url = f"{self.base_url}/api/v3/trades"
+            params = {'symbol': symbol, 'limit': limit}
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            logger.error(f"❌ Trades fetch failed: {e}")
+            return None
+
+
+# Singleton instance
+_binance_integration: Optional[BinanceIntegration] = None
+
+
+def get_binance() -> BinanceIntegration:
+    """Get singleton BinanceIntegration instance"""
+    global _binance_integration
+    if _binance_integration is None:
+        _binance_integration = BinanceIntegration()
+        logger.info("✅ Binance integration initialized")
+    return _binance_integration
